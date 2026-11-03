@@ -1,0 +1,4167 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#07070d">
+<title>AUTO CASE — PC Edition</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Roboto+Mono:wght@400;700&family=Inter:wght@400;600;800&family=Shippori+Mincho:wght@500;700;800&display=swap" rel="stylesheet">
+
+<script src="https://cdn.pubnub.com/sdk/javascript/pubnub.13.0.1.min.js"></script>
+
+<style>
+/* ==========================================================================
+   1. ПЕРЕМЕННЫЕ И БАЗОВЫЕ СТИЛИ
+   ========================================================================== */
+:root {
+  --font-main: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --bg: #07070d;
+  --bg-gradient: radial-gradient(900px 500px at 10% -10%, rgba(0,229,255,.10), transparent 60%),
+                 radial-gradient(800px 500px at 110% 110%, rgba(255,46,99,.10), transparent 60%);
+  --card: #12121f;
+  --card2: #1a1a2e;
+  --line: #252540;
+  --txt: #e8eaf2;
+  --muted: #8b90a8;
+  --accent: #00e5ff;
+  --accent-gradient: linear-gradient(135deg, #00e5ff, #0077ff);
+  --coin-color: #4a9eff;
+  --app-max-width: 480px;
+  --success: #22c55e;
+  --danger: #ef4444;
+  --warning: #fbbf24;
+}
+
+[data-theme="light"] {
+  --bg: #f0f4f8;
+  --bg-gradient: radial-gradient(900px 500px at 10% -10%, rgba(37,99,235,.10), transparent 60%),
+                 radial-gradient(800px 500px at 110% 110%, rgba(236,72,153,.10), transparent 60%);
+  --card: #ffffff; --card2: #e2e8f0; --line: #cbd5e1;
+  --txt: #1e293b; --muted: #64748b; --accent: #2563eb;
+  --accent-gradient: linear-gradient(135deg, #2563eb, #1d4ed8); --coin-color: #2563eb;
+}
+
+[data-theme="neon"] {
+  --bg: #0d0221;
+  --bg-gradient: radial-gradient(900px 500px at 10% -10%, rgba(255,0,127,.15), transparent 60%),
+                 radial-gradient(800px 500px at 110% 110%, rgba(0,229,255,.15), transparent 60%);
+  --card: #1a0b2e; --card2: #2d124d; --line: #4c1d95;
+  --txt: #fde047; --muted: #d946ef; --accent: #ff007f;
+  --accent-gradient: linear-gradient(135deg, #ff007f, #ff00ea); --coin-color: #00e5ff;
+}
+
+[data-theme="japan"] {
+  --font-main: 'Shippori Mincho', serif;
+  --bg: #0a0505;
+  --bg-gradient: radial-gradient(circle at 50% 0%, rgba(139, 0, 0, 0.4) 0%, transparent 70%),
+                 radial-gradient(circle at 100% 100%, rgba(212, 175, 55, 0.15) 0%, transparent 50%);
+  --card: #140a0a; --card2: #1c0e0e; --line: #3d1c1c;
+  --txt: #f5e6d3; --muted: #a88c80; --accent: #d4af37;
+  --accent-gradient: linear-gradient(135deg, #d4af37, #b8860b); --coin-color: #d4af37;
+}
+
+[data-font="sport"] { --font-main: 'Oswald', sans-serif; }
+[data-font="tech"]  { --font-main: 'Roboto Mono', monospace; }
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body { height: 100%; margin: 0; background: #030306; }
+
+body {
+  font-family: var(--font-main);
+  color: var(--txt);
+  overflow: hidden;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ==========================================================================
+   2. КОНТЕЙНЕР ПРИЛОЖЕНИЯ
+   ========================================================================== */
+#app-container {
+  position: relative;
+  width: 100%;
+  max-width: var(--app-max-width);
+  height: 100%;
+  margin: 0 auto;
+  background: var(--bg);
+  box-shadow: 0 0 80px rgba(0,0,0,0.8);
+  overflow: hidden;
+  transition: background 0.3s, color 0.3s, max-width 0.2s;
+  display: flex;
+  flex-direction: column;
+}
+
+#app-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: var(--bg-gradient);
+  transition: background 0.3s;
+}
+
+#japan-dragon {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.15;
+  overflow: hidden;
+  display: none;
+}
+
+[data-theme="japan"] #japan-dragon { display: block; }
+
+#loading-screen {
+  position: absolute;
+  inset: 0;
+  z-index: 1000;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.4s ease;
+}
+
+#loading-screen.hidden-loader { opacity: 0; pointer-events: none; }
+
+.spinner {
+  width: 40px; height: 40px;
+  border: 4px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-top: 20px;
+}
+
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+/* ==========================================================================
+   3. ОБЩИЕ ЭЛЕМЕНТЫ
+   ========================================================================== */
+button { font-family: inherit; border: none; background: none; color: inherit; cursor: pointer; transition: 0.15s; }
+input, select { font-family: inherit; }
+.hidden { display: none !important; }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: var(--line); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+.svg-icon { width: 100%; height: 100%; fill: currentColor; }
+img.badge-img { width: 100%; height: 100%; object-fit: contain; display: block; }
+img.avatar-img { width: 100%; height: 100%; object-fit: cover; display: block; border-radius: inherit; }
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  z-index: 1;
+  background: var(--bg);
+}
+.screen.active { display: flex; }
+
+/* ==========================================================================
+   4. АВТОРИЗАЦИЯ
+   ========================================================================== */
+#screen-auth {
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.auth-logo { text-align: center; margin-bottom: 26px; }
+
+.logo-glow {
+  font-size: 38px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  line-height: 1;
+  color: var(--txt);
+  text-shadow: 0 0 18px var(--accent), 0 0 46px var(--accent);
+  animation: pulseLogo 2.8s ease-in-out infinite;
+}
+
+.logo-glow span { color: var(--accent); text-shadow: 0 0 18px var(--accent), 0 0 46px var(--accent); }
+
+@keyframes pulseLogo { 50% { text-shadow: 0 0 26px var(--accent), 0 0 66px var(--accent); } }
+
+.tagline { color: var(--muted); font-size: 13px; margin: 10px 0 0; letter-spacing: 0.5px; }
+
+.auth-card {
+  width: 100%;
+  max-width: 380px;
+  background: linear-gradient(160deg, var(--card2), var(--card));
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 18px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+}
+
+.tabs {
+  display: flex;
+  gap: 6px;
+  background: rgba(0,0,0,0.1);
+  border-radius: 12px;
+  padding: 5px;
+  margin-bottom: 16px;
+}
+
+.tab {
+  flex: 1;
+  padding: 10px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.tab.active {
+  background: var(--accent-gradient);
+  color: #fff;
+  box-shadow: 0 4px 18px rgba(0,229,255,0.3);
+}
+
+#auth-form { display: flex; flex-direction: column; gap: 11px; }
+
+#auth-form input {
+  width: 100%;
+  padding: 14px 15px;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.15);
+  border: 1px solid var(--line);
+  color: var(--txt);
+  font-size: 16px;
+  outline: none;
+}
+
+#auth-form input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,229,255,0.14); }
+
+/* ==========================================================================
+   5. КНОПКИ
+   ========================================================================== */
+.btn-primary {
+  width: 100%;
+  padding: 15px;
+  border-radius: 13px;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  background: var(--accent-gradient);
+  color: #fff;
+  box-shadow: 0 8px 26px rgba(0,229,255,0.3);
+}
+
+.btn-primary:active { transform: scale(0.97); }
+.btn-primary:disabled { opacity: 0.5; pointer-events: none; }
+
+.btn-outline {
+  width: 100%;
+  padding: 15px;
+  border-radius: 13px;
+  font-size: 14px;
+  font-weight: 700;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--line);
+  color: var(--txt);
+}
+
+.btn-outline:active { transform: scale(0.97); }
+
+.btn-danger {
+  width: 100%;
+  padding: 15px;
+  border-radius: 13px;
+  font-size: 14px;
+  font-weight: 700;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: var(--danger);
+}
+
+.msg { min-height: 18px; margin-top: 11px; text-align: center; font-size: 13px; font-weight: 600; }
+.msg.err { color: var(--danger); }
+.msg.ok { color: var(--success); }
+
+/* ==========================================================================
+   6. ГЛОБАЛЬНАЯ ЛЕНТА
+   ========================================================================== */
+.global-feed {
+  background: var(--card2);
+  border-bottom: 1px solid var(--line);
+  padding: 6px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+  z-index: 5;
+  position: relative;
+}
+
+.feed-dot {
+  width: 6px; height: 6px;
+  background: var(--success);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--success);
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.4; } 100% { opacity: 1; } }
+
+.feed-scroll {
+  display: flex;
+  gap: 20px;
+  white-space: nowrap;
+  animation: marquee 25s linear infinite;
+}
+
+@keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+
+.feed-item b { color: var(--accent); }
+.feed-item.mythic b { color: var(--danger); }
+.feed-item.legend b { color: var(--warning); }
+
+/* ==========================================================================
+   7. ШАПКА
+   ========================================================================== */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 15px;
+  background: var(--card);
+  opacity: 0.95;
+  backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--line);
+  z-index: 10;
+}
+
+.user-chip { display: flex; align-items: center; gap: 10px; min-width: 0; }
+
+.avatar {
+  width: 40px; height: 40px;
+  border-radius: 12px;
+  flex: 0 0 40px;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  font-size: 17px;
+  color: #fff;
+  background: var(--accent-gradient);
+  box-shadow: 0 4px 16px rgba(0,229,255,0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.avatar svg { width: 22px; height: 22px; }
+.user-info { display: flex; flex-direction: column; align-items: flex-start; }
+.uname-row { display: flex; align-items: center; gap: 5px; }
+
+.uname {
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100px;
+}
+
+.badge-icon {
+  width: 16px; height: 16px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lvl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.top-actions { display: flex; align-items: center; gap: 8px; }
+
+.btn-fullscreen {
+  width: 36px; height: 36px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 18px;
+}
+
+.balance {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 15px;
+  background: rgba(74,158,255,0.1);
+  border: 1px solid rgba(74,158,255,0.3);
+  color: var(--coin-color);
+  white-space: nowrap;
+}
+
+.balance svg { width: 16px; height: 16px; }
+
+/* ==========================================================================
+   8. КОНТЕНТ И КЕЙСЫ
+   ========================================================================== */
+.content {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 14px 14px 100px;
+  z-index: 1;
+}
+
+.tabpage { display: none; animation: fade 0.25s; }
+.tabpage.active { display: block; }
+
+@keyframes fade { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+.section-title {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin: 4px 0 12px;
+}
+
+.case-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.case-card {
+  position: relative;
+  border-radius: 18px;
+  padding: 18px 10px 14px;
+  text-align: center;
+  background: var(--card);
+  border: 1px solid var(--line);
+  transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+}
+
+.case-card:active { transform: scale(0.96); }
+.case-card.disabled { opacity: 0.5; filter: grayscale(1); }
+
+.case-card.legendary {
+  border-color: #ffd700;
+  box-shadow: 0 0 20px rgba(255,215,0,0.3);
+  background: linear-gradient(160deg, #2a1a08, #12121f);
+}
+
+.case-card.legendary .case-name { color: #ffd700; text-shadow: 0 0 10px rgba(255,215,0,0.5); }
+
+.case-icon-wrap {
+  width: 64px; height: 64px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.case-icon-wrap img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.case-icon-wrap svg { width: 100%; height: 100%; }
+
+.case-name {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  margin-top: 10px;
+  position: relative;
+}
+
+.case-price {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 9px;
+  padding: 6px 12px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--coin-color);
+  background: rgba(74,158,255,0.1);
+  border: 1px solid rgba(74,158,255,0.2);
+}
+
+.case-price svg { width: 12px; height: 12px; }
+
+.history-list {
+  display: flex;
+  gap: 8px;
+  margin-top: 20px;
+  overflow-x: auto;
+  padding-bottom: 10px;
+}
+
+.history-item {
+  min-width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  background: var(--card2);
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.history-item img { width: 40px; height: 40px; object-fit: contain; }
+.history-item svg { width: 30px; height: 30px; }
+
+/* ==========================================================================
+   9. МИНИ-ИГРЫ И СИНТЕЗ
+   ========================================================================== */
+.minigames-container { display: flex; flex-direction: column; gap: 16px; }
+
+.minigame-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 16px;
+}
+
+.mg-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--accent);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mg-desc { font-size: 12px; color: var(--muted); margin-bottom: 15px; }
+
+#mg-clicker-area {
+  height: 200px;
+  position: relative;
+  background: rgba(0,0,0,0.2);
+  border-radius: 12px;
+  border: 1px dashed var(--line);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.target {
+  position: absolute;
+  width: 50px; height: 50px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ff007f 0%, #cc0066 100%);
+  border: 2px solid #fff;
+  box-shadow: 0 0 15px #ff007f;
+  cursor: crosshair;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  color: #fff;
+  font-size: 18px;
+  transition: transform 0.05s;
+  user-select: none;
+}
+
+.mg-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.mg-btn {
+  padding: 10px 20px;
+  border-radius: 10px;
+  background: var(--accent-gradient);
+  color: #fff;
+  font-weight: 800;
+}
+
+.mg-btn:disabled { opacity: 0.5; pointer-events: none; }
+
+.guess-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 15px; }
+
+.guess-btn {
+  aspect-ratio: 1;
+  border-radius: 10px;
+  background: var(--card2);
+  border: 1px solid var(--line);
+  font-weight: 800;
+  font-size: 18px;
+  color: var(--txt);
+}
+
+.guess-btn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 10px rgba(0,229,255,0.2);
+}
+
+.merge-container {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 16px;
+  text-align: center;
+}
+
+.merge-slots { display: flex; justify-content: center; gap: 10px; margin-bottom: 15px; }
+
+.merge-slot {
+  width: 70px; height: 70px;
+  border-radius: 14px;
+  border: 2px dashed var(--line);
+  background: rgba(0,0,0,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.merge-slot:hover { border-color: var(--accent); }
+.merge-slot img { width: 50px; height: 50px; object-fit: contain; }
+.merge-slot.filled { border-style: solid; border-color: var(--accent); }
+
+/* ==========================================================================
+   10. ИНВЕНТАРЬ
+   ========================================================================== */
+.inv-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.inv-tabs {
+  display: flex;
+  gap: 6px;
+  background: var(--card2);
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+}
+
+.inv-tab {
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.inv-tab.active { background: var(--accent); color: #000; }
+
+.inv-list { display: flex; flex-direction: column; gap: 10px; }
+
+.inv-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 12px;
+  border-radius: 15px;
+  background: linear-gradient(160deg, var(--card2), var(--card));
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--c, #8b95a5);
+  transition: transform 0.15s;
+}
+
+.inv-item:hover { transform: translateX(2px); }
+
+.inv-icon {
+  width: 50px; height: 50px;
+  color: var(--c);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.inv-icon img { width: 100%; height: 100%; object-fit: contain; }
+.inv-info { flex: 1; min-width: 0; }
+
+.inv-name {
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inv-rar { font-size: 11px; font-weight: 700; margin-top: 2px; }
+
+.inv-sell {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 9px 13px;
+  border-radius: 11px;
+  font-size: 12.5px;
+  font-weight: 800;
+  background: rgba(34,197,94,0.12);
+  border: 1px solid rgba(34,197,94,0.3);
+  color: var(--success);
+  white-space: nowrap;
+}
+
+.inv-sell:hover { background: rgba(34,197,94,0.25); transform: scale(1.02); }
+.inv-sell svg { width: 12px; height: 12px; }
+
+.empty {
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+  padding: 50px 20px;
+  line-height: 1.6;
+}
+
+.empty svg { width: 44px; height: 44px; margin-bottom: 12px; opacity: 0.5; }
+
+/* ==========================================================================
+   11. ПРОМОКОДЫ, ПРОФИЛЬ, ДОСТИЖЕНИЯ
+   ========================================================================== */
+.promo-box {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 20px;
+  text-align: center;
+  margin-top: 20px;
+}
+
+.promo-box h3 { margin-top: 0; color: var(--accent); font-size: 18px; }
+.promo-box p { font-size: 13px; color: var(--muted); margin-bottom: 20px; }
+
+.promo-input-group { display: flex; gap: 10px; margin-bottom: 15px; }
+
+.promo-input {
+  flex: 1;
+  padding: 12px 15px;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid var(--line);
+  color: var(--txt);
+  text-transform: uppercase;
+  text-align: center;
+  letter-spacing: 2px;
+}
+
+.promo-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 10px rgba(0,229,255,0.2); }
+
+.profile-card {
+  border-radius: 20px;
+  padding: 0 0 22px 0;
+  text-align: center;
+  background: var(--card2);
+  border: 1px solid var(--line);
+  margin-bottom: 14px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.profile-banner-wrap {
+  width: 100%;
+  height: 140px;
+  position: relative;
+  background: linear-gradient(160deg, var(--accent), var(--card2));
+  margin-bottom: -38px;
+  cursor: pointer;
+}
+
+.profile-banner-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 40%, var(--card2) 100%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.banner-media {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.music-player {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(0,0,0,0.4);
+  padding: 6px 14px;
+  border-radius: 20px;
+  margin-top: 12px;
+  z-index: 2;
+  position: relative;
+  border: 1px solid var(--line);
+}
+
+.music-btn {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #000;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.music-btn svg { width: 16px; height: 16px; fill: currentColor; }
+
+.music-text {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.p-avatar {
+  width: 76px; height: 76px;
+  border-radius: 22px;
+  margin: 0 auto 14px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  background: var(--accent-gradient);
+  box-shadow: 0 10px 34px rgba(0,0,0,0.5);
+  overflow: hidden;
+  position: relative;
+  z-index: 2;
+  border: 3px solid var(--card2);
+}
+
+.p-avatar svg { width: 40px; height: 40px; }
+
+.p-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  position: relative;
+  z-index: 2;
+}
+
+.p-name {
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.btn-select-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  background: rgba(0,229,255,0.1);
+  border: 1px solid rgba(0,229,255,0.3);
+  position: relative;
+  z-index: 2;
+}
+
+.p-bal {
+  font-size: 26px;
+  font-weight: 900;
+  color: var(--coin-color);
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  position: relative;
+  z-index: 2;
+}
+
+.p-bal svg { width: 24px; height: 24px; }
+
+.p-bal small {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 600;
+  display: block;
+  margin-top: 4px;
+}
+
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+
+.stat {
+  padding: 14px 10px;
+  border-radius: 15px;
+  text-align: center;
+  background: linear-gradient(160deg, var(--card2), var(--card));
+  border: 1px solid var(--line);
+}
+
+.stat b { display: block; font-size: 19px; font-weight: 900; color: var(--accent); }
+.stat span { font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: 0.4px; }
+
+.p-actions { display: flex; flex-direction: column; gap: 10px; }
+
+.quest-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  margin-bottom: 8px;
+  position: relative;
+}
+
+.quest-info { flex: 1; font-size: 13px; font-weight: 600; }
+.quest-reward { color: var(--coin-color); font-weight: 800; font-size: 13px; }
+
+.ach-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  margin-bottom: 8px;
+}
+.ach-icon { font-size: 24px; }
+.ach-info { flex: 1; }
+.ach-title { font-size: 14px; font-weight: 700; }
+.ach-desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.ach-btn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(34,197,94,0.1);
+  color: var(--success);
+  border: 1px solid rgba(34,197,94,0.3);
+}
+.ach-btn:disabled { background: rgba(255,255,255,0.05); color: var(--muted); border-color: var(--line); }
+
+/* ==========================================================================
+   12. НАСТРОЙКИ
+   ========================================================================== */
+.settings-group {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 14px;
+}
+
+.settings-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--muted);
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.options-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.name-color-settings { display: flex; flex-direction: column; gap: 12px; }
+.set-row { display: flex; gap: 10px; }
+
+.set-input {
+  flex: 1;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(0,0,0,0.15);
+  border: 1px solid var(--line);
+  color: var(--txt);
+  font-size: 15px;
+  outline: none;
+}
+
+.set-input:focus { border-color: var(--accent); }
+
+.btn-save {
+  padding: 0 16px;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 13px;
+  background: var(--accent-gradient);
+  color: #fff;
+}
+
+.color-palette { display: flex; flex-wrap: wrap; gap: 10px; }
+
+.clr-btn {
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  transition: 0.2s;
+}
+
+.clr-btn.active { border-color: #fff; box-shadow: 0 0 10px currentColor; transform: scale(1.1); }
+.clr-btn:hover { transform: scale(1.1); }
+
+.upload-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: 2px dashed var(--line);
+  background: rgba(0,0,0,0.1);
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 14px;
+  transition: 0.2s;
+  margin-bottom: 10px;
+}
+
+.upload-btn:hover { background: rgba(0,0,0,0.2); border-color: var(--accent); color: var(--accent); }
+.upload-btn svg { width: 22px; height: 22px; }
+
+.theme-btn, .font-btn {
+  padding: 10px;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 2px solid transparent;
+  font-weight: 700;
+  font-size: 13px;
+  text-align: center;
+  transition: 0.15s;
+}
+
+.theme-btn:hover, .font-btn:hover { border-color: var(--line); }
+.theme-btn.active, .font-btn.active { border-color: var(--accent); color: var(--accent); }
+
+.admin-panel { border: 1px solid var(--danger); background: rgba(239, 68, 68, 0.05); }
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding-bottom: 10px;
+}
+
+.admin-panel .settings-title { color: var(--danger); margin-bottom: 0; }
+.admin-arrow { transition: transform 0.3s; color: var(--danger); font-size: 18px; }
+
+.admin-content {
+  margin-top: 10px;
+  border-top: 1px solid rgba(239, 68, 68, 0.2);
+  padding-top: 14px;
+}
+
+.admin-form-group { margin-bottom: 12px; }
+
+.admin-form-group label {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 4px;
+  font-weight: 700;
+}
+
+.admin-form-group input, .admin-form-group select {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid var(--line);
+  color: var(--txt);
+  outline: none;
+}
+
+/* ==========================================================================
+   13. НИЖНЯЯ НАВИГАЦИЯ
+   ========================================================================== */
+.bottom-nav {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: flex;
+  padding: 8px 10px 8px;
+  background: var(--card);
+  opacity: 0.95;
+  backdrop-filter: blur(16px);
+  border-top: 1px solid var(--line);
+}
+
+.nav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 7px 0;
+  border-radius: 12px;
+  color: var(--muted);
+}
+
+.nav-btn svg { width: 22px; height: 22px; }
+.nav-btn span { font-size: 10.5px; font-weight: 700; letter-spacing: 0.3px; }
+.nav-btn.active { color: var(--accent); background: rgba(0,229,255,0.09); }
+
+/* ==========================================================================
+   14. МОДАЛКИ И ОВЕРЛЕИ
+   ========================================================================== */
+.modal-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 80;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(5px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal-overlay.show { display: flex; animation: fadeIn 0.2s; }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.modal-content {
+  background: var(--card2);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 360px;
+  padding: 20px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  animation: popIn 0.3s cubic-bezier(0.2, 1.5, 0.45, 1);
+  text-align: center;
+}
+
+@keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+  text-align: left;
+}
+
+.modal-title { font-size: 16px; font-weight: 800; color: var(--txt); }
+.modal-close { color: var(--muted); font-size: 20px; line-height: 1; padding: 4px; }
+
+.confirm-text { font-size: 14px; color: var(--muted); margin-bottom: 20px; line-height: 1.4; }
+.confirm-buttons { display: flex; gap: 10px; }
+.confirm-buttons button { flex: 1; }
+
+.badge-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+
+.badge-btn {
+  aspect-ratio: 1;
+  border-radius: 12px;
+  background: var(--bg);
+  border: 2px solid transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px;
+  transition: 0.15s;
+}
+
+.badge-btn:hover { border-color: var(--line); }
+.badge-btn.active { border-color: var(--accent); box-shadow: 0 0 12px rgba(0,229,255,0.2); }
+.badge-btn img { width: 32px; height: 32px; object-fit: contain; }
+
+.badge-btn span {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.1;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: none;
+  flex-direction: column;
+  background: rgba(4,4,10,0.95);
+  backdrop-filter: blur(10px);
+  padding: 12px 0 14px;
+}
+
+.overlay.show { display: flex; }
+
+.open-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px 14px;
+}
+
+.open-title {
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: var(--muted);
+}
+
+.btn-ghost {
+  width: 36px; height: 36px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.btn-ghost:hover { background: rgba(255,255,255,0.15); color: var(--accent); }
+.btn-ghost svg { width: 18px; height: 18px; }
+
+.roulette-wrap {
+  position: relative;
+  height: 132px;
+  overflow: hidden;
+  flex: 0 0 auto;
+  background: linear-gradient(180deg, var(--bg), var(--card2), var(--bg));
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  margin-top: 20px;
+}
+
+.roulette-wrap::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, var(--bg) 0%, transparent 18%, transparent 82%, var(--bg) 100%);
+}
+
+.roulette {
+  display: flex;
+  gap: 8px;
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translate3d(0, -50%, 0);
+  will-change: transform;
+}
+
+.ritem {
+  width: 84px;
+  height: 104px;
+  flex: 0 0 84px;
+  border-radius: 13px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--card);
+  border: 2px solid var(--line);
+  padding: 6px;
+}
+
+.ritem svg, .ritem img { width: 44px; height: 44px; object-fit: contain; }
+
+.rname {
+  font-size: 9px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.15;
+  color: var(--muted);
+  max-width: 72px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.marker {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  z-index: 5;
+  background: linear-gradient(180deg, transparent, var(--accent), var(--accent), transparent);
+  transform: translateX(-50%);
+  box-shadow: 0 0 14px var(--accent);
+  animation: mkGlow 1.1s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes mkGlow { 50% { box-shadow: 0 0 26px var(--accent); } }
+
+.marker::before, .marker::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+}
+
+.marker::before { top: 0; border-top: 9px solid var(--accent); }
+.marker::after { bottom: 0; border-bottom: 9px solid var(--accent); }
+
+.drop-result {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  min-height: 0;
+  gap: 16px;
+}
+
+.drop-card {
+  width: 100%;
+  max-width: 280px;
+  border-radius: 22px;
+  padding: 22px 18px;
+  text-align: center;
+  background: linear-gradient(160deg, var(--card2), var(--card));
+  border: 2px solid var(--c, #8b95a5);
+  box-shadow: 0 0 46px var(--g, rgba(139,149,165,0.35)), inset 0 0 40px rgba(0,0,0,0.5);
+  animation: pop 0.55s cubic-bezier(0.2, 1.5, 0.45, 1);
+}
+
+@keyframes pop { from { transform: scale(0.55) rotate(-6deg); opacity: 0; } to { transform: scale(1) rotate(0); opacity: 1; } }
+
+.drop-rarity { font-size: 11px; font-weight: 900; letter-spacing: 2.5px; color: var(--c); text-transform: uppercase; }
+
+.drop-icon {
+  width: 120px; height: 120px;
+  margin: 12px auto 8px;
+  color: var(--c);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 8px 20px rgba(0,0,0,0.7));
+}
+
+.drop-icon img { width: 100%; height: 100%; object-fit: contain; }
+.drop-name { font-size: 17px; font-weight: 800; }
+
+.drop-price {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 7px 15px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--coin-color);
+  background: rgba(74,158,255,0.1);
+  border: 1px solid rgba(74,158,255,0.3);
+}
+
+.drop-price svg { width: 16px !important; height: 16px !important; flex-shrink: 0; }
+
+.open-actions { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 260px; }
+
+.open-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  font-size: 14px;
+}
+
+.open-actions button svg { width: 16px !important; height: 16px !important; flex-shrink: 0; }
+
+/* ==========================================================================
+   15. ЧАТ ПОДДЕРЖКИ
+   ========================================================================== */
+.support-chat { display: flex; flex-direction: column; flex: 1; overflow: hidden; padding: 0 16px; }
+
+.support-messages {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-bottom: 10px;
+}
+
+.msg-bubble {
+  max-width: 85%;
+  padding: 10px 14px;
+  border-radius: 15px;
+  font-size: 14px;
+  line-height: 1.4;
+  position: relative;
+  word-wrap: break-word;
+}
+
+.msg-bot {
+  background: var(--card2);
+  border: 1px solid var(--line);
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+
+.msg-user {
+  background: var(--accent);
+  color: #000;
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+  font-weight: 600;
+}
+
+.msg-owner {
+  background: var(--warning);
+  color: #000;
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+  font-weight: 700;
+}
+
+.msg-sender {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--muted);
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.msg-owner .msg-sender { color: rgba(0,0,0,0.6); }
+.msg-sender img { width: 12px; height: 12px; object-fit: contain; }
+
+.quick-replies { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 0; }
+
+.quick-btn {
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  background: rgba(0,229,255,0.1);
+  border: 1px solid rgba(0,229,255,0.3);
+  color: var(--accent);
+}
+
+.quick-btn:hover { background: rgba(0,229,255,0.2); }
+
+.support-input-area {
+  display: flex;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+
+.support-input-area input {
+  flex: 1;
+  padding: 12px 15px;
+  border-radius: 20px;
+  font-size: 14px;
+  background: var(--card2);
+  border: 1px solid var(--line);
+  color: var(--txt);
+  outline: none;
+}
+
+.support-input-area button {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #000;
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+}
+
+.typing-indicator {
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+  display: none;
+  margin-bottom: 10px;
+  padding-left: 10px;
+}
+
+/* ==========================================================================
+   16. OWNER REQUEST
+   ========================================================================== */
+.owner-request-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 90;
+  background: rgba(0,0,0,0.85);
+  backdrop-filter: blur(8px);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.owner-request-overlay.show { display: flex; }
+
+.owner-request-card {
+  background: var(--card2);
+  border: 1px solid var(--warning);
+  border-radius: 20px;
+  width: 100%;
+  max-width: 360px;
+  padding: 24px;
+  text-align: center;
+  box-shadow: 0 0 60px rgba(251,191,36,0.3);
+}
+
+.owner-request-title { font-size: 18px; font-weight: 800; color: var(--warning); margin-bottom: 12px; }
+.owner-request-user { font-size: 14px; color: var(--muted); margin-bottom: 8px; }
+
+.owner-request-msg {
+  font-size: 15px;
+  color: var(--txt);
+  background: rgba(0,0,0,0.3);
+  padding: 12px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+  text-align: left;
+  line-height: 1.4;
+}
+
+.owner-request-buttons { display: flex; gap: 12px; }
+
+.owner-request-buttons button {
+  flex: 1;
+  padding: 14px;
+  border-radius: 12px;
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.owner-request-accept { background: var(--success); color: #fff; }
+.owner-request-decline { background: rgba(239,68,68,0.15); color: var(--danger); border: 1px solid rgba(239,68,68,0.3); }
+
+/* ==========================================================================
+   17. СПИСКИ ТРЕКОВ И БАННЕРОВ
+   ========================================================================== */
+.list-empty {
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 14px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+}
+
+.track-list { display: flex; flex-direction: column; gap: 8px; }
+
+.track-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.2);
+  border: 1px solid var(--line);
+}
+
+.track-item.active { border-color: var(--accent); background: rgba(0,229,255,0.08); }
+
+.track-icon {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #000;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.track-name {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.track-btn {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+.track-btn:hover { background: rgba(255,255,255,0.15); color: var(--accent); }
+.track-btn.delete { color: var(--danger); }
+.track-btn.delete:hover { background: rgba(239,68,68,0.2); }
+
+.banner-list { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.banner-thumb {
+  position: relative;
+  aspect-ratio: 16/9;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid var(--line);
+  background: #000;
+}
+
+.banner-thumb.active { border-color: var(--accent); box-shadow: 0 0 10px rgba(0,229,255,0.3); }
+
+.banner-thumb .banner-thumb-media {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(45deg, #1a1a2e, #0d0221);
+}
+
+.banner-thumb .banner-thumb-media img,
+.banner-thumb .banner-thumb-media video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.banner-thumb-actions {
+  position: absolute;
+  inset: auto 0 0 0;
+  padding: 4px;
+  display: flex;
+  gap: 4px;
+  background: linear-gradient(transparent, rgba(0,0,0,0.85));
+}
+
+.banner-thumb-actions button {
+  flex: 1;
+  padding: 4px 2px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(255,255,255,0.25);
+  color: #fff;
+}
+
+.banner-thumb-actions button:hover { background: rgba(255,255,255,0.4); }
+.banner-thumb-actions button.del { flex: 0 0 auto; padding: 4px 8px; background: rgba(239,68,68,0.7); }
+
+.banner-name-label {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  background: rgba(0,0,0,0.7);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  z-index: 2;
+  max-width: 90%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   18. ГРОМКОСТЬ И УВЕДОМЛЕНИЯ
+   ========================================================================== */
+.volume-control {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+  background: rgba(0,0,0,0.2);
+  padding: 8px 12px;
+  border-radius: 10px;
+}
+
+.volume-control span { font-size: 14px; }
+
+input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; }
+
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 16px;
+  width: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  margin-top: -6px;
+  box-shadow: 0 0 10px var(--accent);
+}
+
+input[type=range]::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 4px;
+  cursor: pointer;
+  background: var(--line);
+  border-radius: 2px;
+}
+
+@keyframes shake {
+  0% { transform: translate(1px, 1px) rotate(0deg); }
+  10% { transform: translate(-1px, -2px) rotate(-1deg); }
+  20% { transform: translate(-3px, 0px) rotate(1deg); }
+  30% { transform: translate(3px, 2px) rotate(0deg); }
+  40% { transform: translate(1px, -1px) rotate(1deg); }
+  50% { transform: translate(-1px, 2px) rotate(-1deg); }
+  60% { transform: translate(-3px, 1px) rotate(0deg); }
+  70% { transform: translate(2px, 1px) rotate(-1deg); }
+  80% { transform: translate(-1px, -1px) rotate(1deg); }
+  90% { transform: translate(2px, 2px) rotate(0deg); }
+  100% { transform: translate(1px, -2px) rotate(-1deg); }
+}
+
+.shake { animation: shake 0.5s; animation-iteration-count: 1; }
+
+#toast {
+  position: absolute;
+  left: 50%;
+  bottom: 92px;
+  transform: translate(-50%, 20px);
+  z-index: 999;
+  padding: 12px 20px;
+  border-radius: 13px;
+  font-size: 13.5px;
+  font-weight: 700;
+  background: var(--card2);
+  border: 1px solid var(--line);
+  color: var(--txt);
+  box-shadow: 0 12px 36px rgba(0,0,0,0.6);
+  opacity: 0;
+  pointer-events: none;
+  transition: 0.28s;
+  white-space: nowrap;
+  max-width: 90%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+.confetti-piece {
+  position: absolute;
+  width: 10px; height: 10px;
+  z-index: 100;
+  top: -20px;
+  opacity: 1;
+}
+@keyframes fall {
+  0% { transform: translateY(0) rotate(0); opacity: 1; }
+  100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+}
+
+/* ==========================================================================
+   19. DESKTOP LAYOUT
+   ========================================================================== */
+@media (min-width: 900px) {
+  :root { --app-max-width: 1400px; }
+  #app-container { border-radius: 12px; margin: 12px auto; height: calc(100% - 24px); }
+  .spinner { width: 56px; height: 56px; }
+  #loading-screen .logo-glow { font-size: 64px; }
+  .auth-logo { margin-bottom: 40px; }
+  .logo-glow { font-size: 64px; letter-spacing: 6px; }
+  .tagline { font-size: 15px; margin-top: 14px; }
+  .auth-card { max-width: 440px; padding: 28px; }
+  .tab { padding: 12px; font-size: 15px; }
+  #auth-form input { padding: 16px 18px; }
+
+  #screen-game.active {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+      "nav feed"
+      "nav topbar"
+      "nav content";
+  }
+
+  .global-feed { grid-area: feed; padding: 8px 20px; font-size: 12px; }
+  .topbar { grid-area: topbar; padding: 16px 24px; }
+  .content { grid-area: content; padding: 24px 32px 40px; }
+
+  .bottom-nav {
+    grid-area: nav;
+    position: relative;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    padding: 20px 14px;
+    gap: 6px;
+    border-top: none;
+    border-right: 1px solid var(--line);
+    background: var(--card);
+    backdrop-filter: none;
+    overflow-y: auto;
+  }
+
+  .bottom-nav::before {
+    content: 'AUTO CASE';
+    display: block;
+    font-size: 20px;
+    font-weight: 900;
+    color: var(--accent);
+    letter-spacing: 3px;
+    padding: 8px 12px 28px;
+    text-shadow: 0 0 20px var(--accent), 0 0 40px rgba(0,229,255,0.5);
+    text-align: center;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 16px;
+  }
+
+  .nav-btn {
+    flex: 0 0 auto;
+    flex-direction: row;
+    justify-content: flex-start;
+    padding: 14px 18px;
+    gap: 14px;
+    border-radius: 12px;
+    transition: all 0.2s;
+  }
+
+  .nav-btn svg { width: 22px; height: 22px; }
+  .nav-btn span { font-size: 14px; letter-spacing: 0.5px; }
+  .nav-btn:hover { background: rgba(0,229,255,0.06); color: var(--accent); }
+  .nav-btn.active { background: rgba(0,229,255,0.12); }
+
+  .avatar { width: 46px; height: 46px; flex-basis: 46px; border-radius: 14px; }
+  .avatar svg { width: 26px; height: 26px; }
+  .uname { font-size: 16px; max-width: 160px; }
+  .lvl { font-size: 12px; }
+  .balance { padding: 10px 18px; font-size: 16px; }
+  .balance svg { width: 18px; height: 18px; }
+
+  .case-grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }
+  .case-card { padding: 22px 12px 18px; }
+  .case-card:hover { transform: translateY(-4px); border-color: var(--accent); box-shadow: 0 12px 36px rgba(0,229,255,0.15); }
+  .case-icon-wrap { width: 80px; height: 80px; }
+  .case-name { font-size: 15px; margin-top: 14px; }
+  .case-price { font-size: 14px; padding: 8px 14px; }
+  .history-item { min-width: 80px; height: 80px; }
+  .history-item img { width: 56px; height: 56px; }
+  .history-item svg { width: 40px; height: 40px; }
+  .section-title { font-size: 14px; letter-spacing: 3px; margin-bottom: 16px; }
+
+  .minigames-container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .minigame-card { padding: 22px; }
+  .mg-title { font-size: 18px; }
+  .mg-desc { font-size: 13px; }
+  #mg-clicker-area { height: 320px; }
+
+  .merge-slot { width: 100px; height: 100px; border-radius: 18px; }
+  .merge-slot img { width: 70px; height: 70px; }
+
+  .inv-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+  .inv-item { padding: 14px 16px; }
+  .inv-icon { width: 56px; height: 56px; }
+  .inv-name { font-size: 15px; }
+  .inv-rar { font-size: 12px; }
+
+  .profile-banner-wrap { height: 200px; margin-bottom: -46px; }
+  .p-avatar { width: 92px; height: 92px; border-radius: 26px; }
+  .p-avatar svg { width: 50px; height: 50px; }
+  .p-name { font-size: 24px; }
+  .p-bal { font-size: 32px; }
+  .stats { grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .stat { padding: 18px 12px; }
+  .stat b { font-size: 22px; }
+
+  .settings-group { padding: 20px 22px; }
+  .options-grid { gap: 12px; }
+  .theme-btn, .font-btn { padding: 14px; font-size: 14px; }
+
+  .modal-content { max-width: 520px; padding: 28px; }
+  .modal-title { font-size: 18px; }
+  .badge-grid { grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .badge-btn img { width: 40px; height: 40px; }
+  .badge-btn span { font-size: 11px; }
+
+  .overlay { padding: 20px 0 24px; }
+  .open-top { padding: 0 32px 20px; }
+  .open-title { font-size: 15px; letter-spacing: 3px; }
+  .roulette-wrap { height: 200px; margin-top: 30px; }
+  .ritem { width: 110px; height: 140px; flex: 0 0 110px; gap: 8px; }
+  .ritem svg, .ritem img { width: 60px; height: 60px; }
+  .rname { font-size: 11px; max-width: 96px; }
+  .roulette { gap: 10px; }
+
+  .drop-card { max-width: 400px; padding: 32px 28px; border-radius: 26px; }
+  .drop-rarity { font-size: 13px; letter-spacing: 3px; }
+  .drop-icon { width: 170px; height: 170px; margin: 18px auto 12px; }
+  .drop-name { font-size: 22px; }
+  .drop-price { font-size: 17px; padding: 10px 20px; }
+  .open-actions { max-width: 340px; }
+  .open-actions button { padding: 15px; font-size: 15px; }
+
+  #support-overlay .open-top, #owner-chat-overlay .open-top { padding: 0 32px 18px; }
+  #support-overlay .support-chat, #owner-chat-overlay .support-chat { padding: 0 32px; max-width: 800px; margin: 0 auto; width: 100%; }
+
+  .feed-scroll { animation: marquee 35s linear infinite; }
+  .feed-item { font-size: 12px; }
+  #toast { bottom: 40px; font-size: 14px; padding: 14px 24px; }
+}
+
+@media (min-width: 1500px) {
+  .case-grid { grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); }
+  .content { padding: 32px 48px 56px; }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn-primary:hover { filter: brightness(1.08); transform: translateY(-1px); }
+  .btn-outline:hover { background: rgba(255,255,255,0.08); }
+  .btn-danger:hover { background: rgba(239,68,68,0.2); }
+  .target:hover { transform: scale(1.05); }
+  .mg-btn:hover:not(:disabled) { filter: brightness(1.1); }
+  .guess-btn:hover { border-color: var(--accent); }
+  .quick-btn:hover { background: rgba(0,229,255,0.2); }
+  .inv-sell:hover { transform: translateY(-1px); }
+}
+</style>
+</head>
+<body data-theme="dark" data-font="default">
+
+<div id="app-container">
+  <div id="loading-screen">
+    <div class="logo-glow">AUTO<span>CASE</span></div>
+    <div class="spinner"></div>
+  </div>
+
+  <audio id="bg-music" loop></audio>
+
+  <div id="japan-dragon">
+    <svg viewBox="0 0 1000 1000" preserveAspectRatio="xMidYMid slice" style="width: 100%; height: 100%;">
+      <defs>
+        <linearGradient id="ryuGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#d4af37" />
+          <stop offset="50%" stop-color="#ff4d4d" />
+          <stop offset="100%" stop-color="#8b0000" />
+        </linearGradient>
+      </defs>
+      <path d="M-100 200 C 100 100, 300 300, 500 250 C 700 200, 800 400, 700 600 C 600 800, 400 700, 300 900 C 200 1100, 800 1100, 900 800 C 1000 500, 1100 300, 1000 100" fill="none" stroke="url(#ryuGrad)" stroke-width="30" stroke-linecap="round"/>
+      <path d="M1000 100 L 950 50 L 900 80 L 920 120 L 980 150 Z" fill="#d4af37"/>
+      <path d="M920 120 C 850 100, 800 150, 780 200" fill="none" stroke="#ff4d4d" stroke-width="6"/>
+      <path d="M980 150 C 1050 180, 1050 250, 1000 300" fill="none" stroke="#ff4d4d" stroke-width="6"/>
+    </svg>
+  </div>
+
+  <section id="screen-auth" class="screen active">
+    <div class="auth-logo">
+      <div class="logo-glow">AUTO<span>CASE</span></div>
+      <p class="tagline">Открывай кейсы. Собирай тачки.</p>
+    </div>
+    <div class="auth-card">
+      <div class="tabs">
+        <button class="tab active" data-auth="login">Вход</button>
+        <button class="tab" data-auth="reg">Регистрация</button>
+      </div>
+      <form id="auth-form" autocomplete="off">
+        <input id="in-user" type="text" placeholder="Логин" maxlength="16" autocomplete="username">
+        <input id="in-pass" type="password" placeholder="Пароль" maxlength="32" autocomplete="current-password">
+        <input id="in-pass2" type="password" placeholder="Повтори пароль" maxlength="32" class="hidden">
+        <button type="submit" class="btn-primary" id="auth-submit">ВОЙТИ</button>
+      </form>
+      <div id="auth-msg" class="msg"></div>
+    </div>
+  </section>
+
+  <section id="screen-game" class="screen">
+    <div class="global-feed" id="global-feed">
+      <div class="feed-dot"></div>
+      <div class="feed-scroll" id="feed-scroll">
+        <span>Добро пожаловать в AUTO CASE!</span>
+      </div>
+    </div>
+
+    <header class="topbar">
+      <div class="user-chip">
+        <div class="avatar" id="top-avatar"></div>
+        <div class="user-info">
+          <div class="uname-row">
+            <div class="uname" id="top-name">—</div>
+            <div class="badge-icon" id="top-badge"></div>
+          </div>
+          <div class="lvl" id="top-lvl">Уровень 1</div>
+        </div>
+      </div>
+      <div class="top-actions">
+        <button class="btn-fullscreen" id="btn-fullscreen" title="На весь экран">⛶</button>
+        <div class="balance" id="top-balance"><span id="top-balance-val">0</span></div>
+      </div>
+    </header>
+
+    <main class="content">
+      <div class="tabpage active" id="tab-cases">
+        <h2 class="section-title">Кейсы</h2>
+        <div class="case-grid" id="case-grid"></div>
+        <h2 class="section-title" style="margin-top:24px;">Последние дропы</h2>
+        <div class="history-list" id="history-list"></div>
+      </div>
+
+      <div class="tabpage" id="tab-minigames">
+        <h2 class="section-title">Мини-игры</h2>
+        <div class="minigames-container">
+          <div class="minigame-card">
+            <div class="mg-title">🎯 Тир (Быстрый клик)</div>
+            <div class="mg-desc">Успей нажать на мишень как можно больше раз за 15 секунд! Каждое попадание = 50 €.</div>
+            <div id="mg-clicker-area">
+              <div class="target hidden" id="mg-target" style="left:50%; top:50%; transform:translate(-50%, -50%);">+50</div>
+            </div>
+            <div class="mg-controls">
+              <div>Время: <span id="mg-timer" style="color:var(--accent);">15.0</span> сек</div>
+              <div>Очки: <span id="mg-score" style="color:var(--coin-color);">0</span></div>
+              <button class="mg-btn" id="btn-start-clicker">ИГРАТЬ</button>
+            </div>
+          </div>
+          <div class="minigame-card">
+            <div class="mg-title">🎲 Угадай число</div>
+            <div class="mg-desc">Выбери число от 1 до 5 (можно клавишами 1-5). Если угадаешь — получишь х5 от ставки!</div>
+            <div class="set-row" style="margin-bottom:10px;">
+              <input type="number" id="mg-guess-bet" class="set-input" value="100" min="10" max="100000">
+              <span style="display:flex; align-items:center; font-weight:900; color:var(--coin-color);">€</span>
+            </div>
+            <div class="guess-grid" id="mg-guess-grid">
+              <button class="guess-btn" data-num="1">1</button>
+              <button class="guess-btn" data-num="2">2</button>
+              <button class="guess-btn" data-num="3">3</button>
+              <button class="guess-btn" data-num="4">4</button>
+              <button class="guess-btn" data-num="5">5</button>
+            </div>
+            <button class="btn-primary" id="btn-play-guess" disabled>СДЕЛАТЬ СТАВКУ</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabpage" id="tab-merge">
+        <h2 class="section-title">Синтез (Крафт)</h2>
+        <div class="merge-container">
+          <p style="font-size:13px; color:var(--muted); margin-bottom:20px;">Выберите 3 машины <b>одной редкости</b>, чтобы получить 1 машину <b>более высокой редкости</b>.</p>
+          <div class="merge-slots" id="merge-slots">
+            <div class="merge-slot" data-slot="0"></div>
+            <div class="merge-slot" data-slot="1"></div>
+            <div class="merge-slot" data-slot="2"></div>
+          </div>
+          <button class="btn-primary" id="btn-merge" disabled>СИНТЕЗИРОВАТЬ</button>
+        </div>
+        <h2 class="section-title" style="margin-top:20px;">Ваши машины</h2>
+        <div class="inv-list" id="merge-inventory"></div>
+      </div>
+
+      <div class="tabpage" id="tab-inv">
+        <div class="inv-header">
+          <div class="inv-tabs">
+            <button class="inv-tab active" id="inv-tab-items">Мои тачки</button>
+            <button class="inv-tab" id="inv-tab-promo">Промокод</button>
+          </div>
+          <button class="btn-outline" id="btn-sell-all" style="width:auto; padding:8px 12px; font-size:12px;">Продать всё</button>
+        </div>
+        <div id="inv-view-items"><div id="inv-container"></div></div>
+        <div id="inv-view-promo" class="hidden">
+          <div class="promo-box">
+            <h3>Активация промокода</h3>
+            <p>Введите секретный код и нажмите Enter.</p>
+            <div class="promo-input-group">
+              <input type="text" id="promo-code-input" class="promo-input" placeholder="ВВЕДИТЕ КОД" maxlength="20">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tabpage" id="tab-profile">
+        <h2 class="section-title">Профиль</h2>
+        <div class="profile-card">
+          <div class="profile-banner-wrap" id="p-banner-wrap"></div>
+          <div class="p-avatar" id="p-avatar"></div>
+          <div class="p-name-row">
+            <div class="p-name" id="p-name">—</div>
+            <div class="badge-icon" id="p-badge" style="width:22px;height:22px;"></div>
+          </div>
+          <button class="btn-select-badge" id="btn-open-badges">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+            Выбрать галочку
+          </button>
+          <div class="music-player hidden" id="music-player">
+            <button class="music-btn" id="btn-music-toggle"></button>
+            <span class="music-text" id="music-player-label">Моя музыка</span>
+          </div>
+          <div class="p-bal"><span id="p-balance">0</span> <small>евро на балансе</small></div>
+        </div>
+
+        <div class="stats">
+          <div class="stat"><b id="st-opened">0</b><span>КЕЙСОВ ОТКРЫТО</span></div>
+          <div class="stat"><b id="st-items">0</b><span>ПРЕДМЕТОВ</span></div>
+          <div class="stat"><b id="st-best" style="font-size:13px">—</b><span>ЛУЧШИЙ ДРОП</span></div>
+          <div class="stat"><b id="st-streak" style="color:#fbbf24">0</b><span>ДНЕЙ ПОДРЯД</span></div>
+        </div>
+
+        <h2 class="section-title" style="margin-top:20px;">Ежедневные задания</h2>
+        <div id="quest-list"></div>
+
+        <h2 class="section-title" style="margin-top:20px;">Достижения</h2>
+        <div id="ach-list"></div>
+
+        <div class="p-actions" style="margin-top:20px;">
+          <button class="btn-primary" id="btn-bonus">БОНУС ДНЯ</button>
+          <button class="btn-outline" id="btn-logout">Выйти из аккаунта</button>
+        </div>
+      </div>
+
+      <div class="tabpage" id="tab-settings">
+        <h2 class="section-title">Настройки</h2>
+
+        <div class="settings-group admin-panel hidden" id="admin-panel">
+          <div class="admin-header" id="admin-toggle">
+            <div class="settings-title">👑 АДМИН ПАНЕЛЬ</div>
+            <div class="admin-arrow" id="admin-arrow">▼</div>
+          </div>
+          <div class="admin-content hidden" id="admin-content">
+            <div style="display:flex; gap:10px; margin-bottom:15px;">
+              <button class="btn-danger" id="admin-money" style="flex:1;">+100K €</button>
+              <button class="btn-danger" id="admin-item" style="flex:1;">Выдать Vesta</button>
+            </div>
+
+            <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:15px; margin-top:15px;">
+              <div class="settings-title" style="color:#22c55e; margin-bottom:10px;">🎁 ВЫДАТЬ ПОЛЬЗОВАТЕЛЮ</div>
+              <div class="admin-form-group">
+                <label>Никнейм пользователя (логин)</label>
+                <input type="text" id="admin-gift-user" placeholder="Например: ivan123" maxlength="16">
+              </div>
+              <div class="admin-form-group">
+                <label>Сумма евро (0 = не выдавать)</label>
+                <input type="number" id="admin-gift-money" placeholder="0" value="0">
+              </div>
+              <div class="admin-form-group">
+                <label>Галочка</label>
+                <select id="admin-gift-badge">
+                  <option value="__none__">— Не менять —</option>
+                  <option value="none">Убрать галочку</option>
+                  <option value="v">Фиолетовая</option>
+                  <option value="k">Черная</option>
+                  <option value="a">Синяя</option>
+                  <option value="t">Красная</option>
+                  <option value="gal">Зеленая</option>
+                  <option value="l">Серая</option>
+                </select>
+              </div>
+              <button class="btn-primary" id="btn-admin-gift" style="background:#22c55e; color:#fff;">ВЫДАТЬ</button>
+            </div>
+
+            <div style="border-top:1px solid rgba(255,255,255,0.1); padding-top:15px; margin-top:15px;">
+              <div class="settings-title" style="color:#ef4444; margin-bottom:10px;">Создать Промокод</div>
+              <div class="admin-form-group">
+                <label>Название кода (латиницей)</label>
+                <input type="text" id="promo-create-name" placeholder="Например: WELCOME" maxlength="15">
+              </div>
+              <div class="admin-form-group">
+                <label>Сумма евро</label>
+                <input type="number" id="promo-create-money" placeholder="0" value="1000">
+              </div>
+              <div class="admin-form-group">
+                <label>Выдать машину (опционально)</label>
+                <select id="promo-create-car">
+                  <option value="">— Нет —</option>
+                  <option value="vesta">Lada Vesta</option>
+                  <option value="sport">Спорткар</option>
+                  <option value="rocket">Ракетомобиль</option>
+                  <option value="ufo">НЛО</option>
+                  <option value="lamb">Lamborghini Huracán</option>
+                  <option value="amg">Mercedes-Benz G63 AMG</option>
+                  <option value="bmw">BMW M5 F90</option>
+                  <option value="dodge">Dodge Challenger SRT</option>
+                  <option value="policeL">Dodge Charger Pursuit</option>
+                </select>
+              </div>
+              <div class="admin-form-group">
+                <label>Бесплатные кейсы (эквивалент в евро)</label>
+                <input type="number" id="promo-create-cases" placeholder="0" value="0">
+              </div>
+              <button class="btn-primary" id="btn-create-promo" style="background:#ef4444; color:#fff;">СОЗДАТЬ ПРОМОКОД</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="settings-group" style="border-color:var(--accent); background:rgba(0,229,255,0.05);">
+          <div class="settings-title" style="color:var(--accent);">Служба поддержки</div>
+          <p style="font-size:13px; color:var(--muted); margin-bottom:12px;">Возникли проблемы? Напишите нам, и @Owner (Mrazota) подключится к решению.</p>
+          <button class="btn-primary" id="btn-open-support" style="background:var(--accent); color:#000;">🛠 Открыть чат</button>
+        </div>
+
+        <div class="settings-group">
+          <div class="settings-title">Идентификация</div>
+          <div class="name-color-settings">
+            <div class="set-row">
+              <input type="text" id="set-name-input" class="set-input" maxlength="16" placeholder="Новое имя">
+              <button class="btn-save" id="btn-save-name">OK</button>
+            </div>
+            <div style="font-size: 12px; color: var(--muted); font-weight: 600;">Цвет имени:</div>
+            <div class="color-palette" id="color-palette"></div>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <div class="settings-title">Медиа профиля</div>
+          <input type="file" id="avatar-upload" accept="image/*" class="hidden">
+          <input type="file" id="banner-upload" accept="image/*,video/mp4,video/webm" class="hidden">
+          <input type="file" id="music-upload" accept="audio/*" class="hidden">
+
+          <button class="upload-btn" id="btn-upload-avatar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg>
+            Загрузить аватарку
+          </button>
+
+          <input type="text" id="banner-name-input" class="set-input" placeholder="Название баннера" style="margin-bottom: 10px;">
+          <button class="upload-btn" id="btn-upload-banner" style="margin-bottom: 15px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+            Добавить баннер (фото/видео)
+          </button>
+
+          <button class="upload-btn" id="btn-upload-music">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+            Добавить трек (MP3)
+          </button>
+
+          <div class="settings-title" style="margin-top: 15px; font-size: 11px;">🎧 ИЛИ ДОБАВЬТЕ ПО ССЫЛКЕ</div>
+          <div class="set-row" style="margin-bottom: 10px;">
+            <input type="text" id="online-music-url" class="set-input" placeholder="https://example.com/music.mp3">
+            <button class="btn-save" id="btn-add-online-music">OK</button>
+          </div>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button class="quick-btn" onclick="quickAddMusic('https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3', 'Lo-Fi Chill')">+ Lo-Fi</button>
+            <button class="quick-btn" onclick="quickAddMusic('https://cdn.pixabay.com/download/audio/2021/11/25/audio_00fa5593f3.mp3?filename=phonk-drift-2021-117442.mp3', 'Phonk Drift')">+ Phonk</button>
+            <button class="quick-btn" onclick="quickAddMusic('https://cdn.pixabay.com/download/audio/2022/01/18/audio_d0c6ff1bab.mp3?filename=cyberpunk-2099-113147.mp3', 'Cyberpunk')">+ Cyberpunk</button>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <div class="settings-title">🎵 Мои треки</div>
+          <div class="volume-control">
+            <span>🔊</span>
+            <input type="range" id="music-volume" min="0" max="1" step="0.01" value="0.5">
+          </div>
+          <div class="track-list" id="track-list-container" style="margin-top: 10px;">
+            <div class="list-empty">Пока нет загруженных треков</div>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <div class="settings-title">🖼 Мои баннеры</div>
+          <div class="banner-list" id="banner-list-container">
+            <div class="list-empty" style="grid-column: 1 / -1;">Пока нет загруженных баннеров</div>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <div class="settings-title">Тема интерфейса</div>
+          <div class="options-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr;" id="theme-options">
+            <button class="theme-btn" data-theme="dark">Тёмная</button>
+            <button class="theme-btn" data-theme="light">Светлая</button>
+            <button class="theme-btn" data-theme="neon">Неон</button>
+            <button class="theme-btn" data-theme="japan">Япония</button>
+          </div>
+        </div>
+
+        <div class="settings-group">
+          <div class="settings-title">Шрифт</div>
+          <div class="options-grid" style="grid-template-columns: 1fr 1fr 1fr;" id="font-options">
+            <button class="font-btn" data-font="default">Системный</button>
+            <button class="font-btn" data-font="sport">Спортивный</button>
+            <button class="font-btn" data-font="tech">Техно</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-tab="cases">
+        <svg viewBox="0 0 24 24"><path d="M20 7h-3V5c0-1.1-.9-2-2-2H9c-1.1 0-2 .9-2 2v2H4c-1.1 0-2 .9-2 2v11c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V9c0-1.1-.9-2-2-2zM9 5h6v2H9V5zm11 15H4V9h16v11z"/></svg>
+        <span>Кейсы</span>
+      </button>
+      <button class="nav-btn" data-tab="minigames">
+        <svg viewBox="0 0 24 24"><path d="M21 6H3c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-10 7H8v3H6v-3H3v-2h3V8h2v3h3v2zm4.5 2c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm4-3c-.83 0-1.5-.67-1.5-1.5S18.67 9 19.5 9s1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg>
+        <span>Игры</span>
+      </button>
+      <button class="nav-btn" data-tab="merge">
+        <svg viewBox="0 0 24 24"><path d="M19 3h-4.18C14.4 1.84 13.3 1 12 1c-1.3 0-2.4.84-2.82 2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 0c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zm2 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/></svg>
+        <span>Синтез</span>
+      </button>
+      <button class="nav-btn" data-tab="inv">
+        <svg viewBox="0 0 24 24"><path d="M18 6h-2c0-2.21-1.79-4-4-4S8 3.79 8 6H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-6-2c1.1 0 2 .9 2 2h-4c0-1.1.9-2 2-2zm6 16H6V8h12v12z"/></svg>
+        <span>Инвентарь</span>
+      </button>
+      <button class="nav-btn" data-tab="profile">
+        <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+        <span>Профиль</span>
+      </button>
+      <button class="nav-btn" data-tab="settings">
+        <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
+        <span>Настройки</span>
+      </button>
+    </nav>
+  </section>
+
+  <div id="badge-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">Выберите галочку</div>
+        <button class="modal-close" id="close-badge-modal">✕</button>
+      </div>
+      <div class="badge-grid" id="badge-grid"></div>
+    </div>
+  </div>
+
+  <div id="confirm-modal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-title" id="confirm-title" style="margin-bottom: 10px;">Подтверждение</div>
+      <div class="confirm-text" id="confirm-text">Вы уверены?</div>
+      <div class="confirm-buttons">
+        <button class="btn-outline" id="confirm-cancel">Отмена</button>
+        <button class="btn-primary" id="confirm-ok">Да</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="open-overlay" class="overlay">
+    <div class="open-top">
+      <div class="open-title" id="open-title">КЕЙС</div>
+      <button class="btn-ghost" id="close-open">
+        <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+    <div class="roulette-wrap">
+      <div class="marker"></div>
+      <div class="roulette" id="roulette"></div>
+    </div>
+    <div class="drop-result" id="drop-result"></div>
+  </div>
+
+  <div id="support-overlay" class="overlay">
+    <div class="open-top">
+      <div class="open-title" style="display:flex; align-items:center; gap:8px;">
+        ТЕХПОДДЕРЖКА
+        <img src="t.webp" style="width:16px; height:16px; object-fit:contain;" alt="check" onerror="this.style.display='none'">
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn-ghost" id="user-clear-chat" title="Очистить чат">🗑</button>
+        <button class="btn-ghost" id="close-support">✕</button>
+      </div>
+    </div>
+
+    <div class="support-chat">
+      <div class="support-messages" id="support-messages">
+        <div class="msg-bubble msg-bot">
+          <div class="msg-sender">БОТ ПОДДЕРЖКИ <img src="t.webp" alt="check" onerror="this.style.display='none'"></div>
+          Привет! Я бот техподдержки AUTO CASE. Опишите вашу проблему, и я передам запрос @Owner (Mrazota).
+        </div>
+      </div>
+      <div class="typing-indicator" id="typing">Бот печатает...</div>
+
+      <div class="quick-replies" id="quick-replies">
+        <button class="quick-btn" onclick="sendQuickReply('Не могу войти в аккаунт')">Не могу войти</button>
+        <button class="quick-btn" onclick="sendQuickReply('Пропали евро или машины')">Пропали евро</button>
+        <button class="quick-btn" onclick="sendQuickReply('Не работает музыка или баннер')">Проблема с медиа</button>
+        <button class="quick-btn" onclick="sendQuickReply('Как получить промокод?')">Промокоды</button>
+      </div>
+
+      <div class="support-input-area">
+        <input type="text" id="support-input" placeholder="Опишите вашу проблему..." autocomplete="off">
+        <button id="btn-send-support">➤</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="owner-request-overlay" class="owner-request-overlay">
+    <div class="owner-request-card">
+      <div class="owner-request-title">🔔 Запрос в поддержку</div>
+      <div class="owner-request-user" id="owner-req-user">Пользователь</div>
+      <div class="owner-request-msg" id="owner-req-msg">Текст проблемы</div>
+      <div class="owner-request-buttons">
+        <button class="owner-request-decline" id="owner-decline">Отказаться</button>
+        <button class="owner-request-accept" id="owner-accept">Согласиться</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="owner-chat-overlay" class="overlay">
+    <div class="open-top">
+      <div class="open-title" style="display:flex; align-items:center; gap:8px;">
+        ЧАТ С <span id="owner-chat-user" style="color:var(--accent);">—</span>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn-ghost" id="owner-chat-clear" title="Очистить">🗑</button>
+        <button class="btn-ghost" id="owner-chat-close" title="Завершить сессию">✕</button>
+      </div>
+    </div>
+    <div class="support-chat">
+      <div class="support-messages" id="owner-chat-messages"></div>
+      <div class="support-input-area">
+        <input type="text" id="owner-chat-input" placeholder="Ответить пользователю..." autocomplete="off">
+        <button id="btn-owner-send">➤</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+</div>
+
+<script>
+/**
+ * AUTO CASE — PC Edition
+ * Все оригинальные функции + десктопные оптимизации + исправления баннеров
+ */
+(function() {
+'use strict';
+
+const $  = s => document.querySelector(s);
+const $$ = s => Array.prototype.slice.call(document.querySelectorAll(s));
+const bgMusic = $('#bg-music');
+
+/* ===== PubNub ===== */
+const pubnub = new PubNub({
+  publishKey: 'demo',
+  subscribeKey: 'demo',
+  userId: 'user_' + Math.random().toString(36).slice(2, 10)
+});
+
+const OWNER_CHANNEL = 'support_owner';
+const GLOBAL_FEED_CHANNEL = 'global_drops_feed';
+function getUserChannel(username) { return 'support_user_' + username; }
+
+let userInSession = false;
+let ownerInSession = false;
+let activeSessionUser = null;
+let activeSessionDisplay = null;
+let pendingRequest = null;
+
+/* ===== SVG ===== */
+const SVG_COIN = '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="10" fill="#4a9eff" stroke="#1e6bd6" stroke-width="1.2"/><path d="M15.3 8.6C14.2 7.6 13.2 7 12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5c1.2 0 2.2-.6 3.3-1.6" stroke="#fff" stroke-width="1.8" fill="none" stroke-linecap="round"/><path d="M6.5 10.5h5M6.5 13.5h5" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/></svg>';
+const SVG_PLAY = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+const SVG_PAUSE = '<svg viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>';
+const DEFAULT_AVATAR_SVG = '<svg viewBox="0 0 100 100" fill="currentColor"><path d="M50 10 C65 30 65 55 50 75 C35 55 35 30 50 10 Z"/><path d="M50 75 L50 95 M40 75 L30 90 M60 75 L70 90" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><circle cx="50" cy="35" r="10" fill="#fff" opacity="0.8"/></svg>';
+
+const ITEM_SVGS = {
+  sedan: '<svg viewBox="0 0 100 100" fill="currentColor"><path d="M15 50 L20 35 L75 35 L85 50 L95 50 L95 65 L5 65 L5 50 Z"/><circle cx="25" cy="65" r="10" fill="#000" opacity="0.5"/><circle cx="75" cy="65" r="10" fill="#000" opacity="0.5"/><rect x="40" y="35" width="20" height="15" fill="#fff" opacity="0.3"/></svg>',
+  sport: '<svg viewBox="0 0 100 100" fill="currentColor"><path d="M10 55 L25 45 L75 45 L90 55 L95 55 L95 65 L5 65 L5 55 Z"/><circle cx="25" cy="65" r="10" fill="#000" opacity="0.6"/><circle cx="75" cy="65" r="10" fill="#000" opacity="0.6"/><path d="M30 45 L40 35 L60 35 L70 45" fill="none" stroke="currentColor" stroke-width="4"/></svg>',
+  suv: '<svg viewBox="0 0 100 100" fill="currentColor"><path d="M15 45 L15 30 L80 30 L85 45 L95 45 L95 65 L5 65 L5 45 Z"/><circle cx="25" cy="65" r="10" fill="#000" opacity="0.5"/><circle cx="75" cy="65" r="10" fill="#000" opacity="0.5"/></svg>',
+  heli: '<svg viewBox="0 0 100 100" fill="currentColor"><path d="M20 55 L30 45 L70 45 L80 55 L95 60 L95 65 L5 65 L5 60 Z"/><path d="M50 15 L50 45 M30 15 L70 15" stroke="currentColor" stroke-width="6"/><circle cx="50" cy="55" r="8" fill="#fff" opacity="0.3"/></svg>',
+  plane: '<svg viewBox="0 0 100 100" fill="currentColor"><path d="M50 10 L60 45 L95 55 L95 65 L50 55 L5 65 L5 55 L40 45 Z"/><rect x="45" y="55" width="10" height="25" rx="5"/></svg>',
+  rocket: '<svg viewBox="0 0 100 100" fill="currentColor"><path d="M50 10 C65 30 65 55 50 75 C35 55 35 30 50 10 Z"/><path d="M50 75 L50 95 M40 75 L30 90 M60 75 L70 90" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><circle cx="50" cy="35" r="10" fill="#fff" opacity="0.8"/></svg>',
+  ufo: '<svg viewBox="0 0 100 100" fill="currentColor"><ellipse cx="50" cy="50" rx="45" ry="15"/><ellipse cx="50" cy="35" rx="25" ry="12" fill="#fff" opacity="0.4"/><circle cx="25" cy="50" r="4" fill="#fff"/><circle cx="50" cy="50" r="4" fill="#fff"/><circle cx="75" cy="50" r="4" fill="#fff"/></svg>',
+  case: '<svg viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="6" stroke-linejoin="round"><path d="M10 35 L50 15 L90 35 L90 85 L50 105 L10 85 Z"/><path d="M10 35 L50 55 L90 35"/><path d="M50 55 L50 105"/></svg>'
+};
+
+const RARITY = {
+  common: {name:'Обычный', color:'#8b95a5', glow:'rgba(139,149,165,0.4)'},
+  rare:   {name:'Редкий', color:'#3b82f6', glow:'rgba(59,130,246,0.5)'},
+  epic:   {name:'Эпический', color:'#a855f7', glow:'rgba(168,85,247,0.5)'},
+  legend: {name:'Легендарный', color:'#fbbf24', glow:'rgba(251,191,36,0.6)'},
+  mythic: {name:'Мифический', color:'#ef4444', glow:'rgba(239,68,68,0.6)'}
+};
+
+const ITEMS = {
+  vesta: {name:'Lada Vesta', img:'vesta.png', svg:'sport', rarity:'mythic', price:25000},
+  lada: {name:'Лада Седан', img:'sedan.png', svg:'sedan', rarity:'common', price:50},
+  uaz: {name:'УАЗик', img:'Ua.png', svg:'suv', rarity:'common', price:70},
+  taxi: {name:'Такси', img:'taxi.png', svg:'sedan', rarity:'common', price:60},
+  bus: {name:'Автобус', img:'bus.png', svg:'suv', rarity:'common', price:100},
+  police: {name:'Полицейская', img:'police.png', svg:'sedan', rarity:'rare', price:300},
+  fire: {name:'Пожарная', img:'fire.png', svg:'suv', rarity:'rare', price:320},
+  pickup: {name:'Пикап', img:'pickup.png', svg:'suv', rarity:'rare', price:280},
+  sport: {name:'Спорткар', img:'sport.png', svg:'sport', rarity:'epic', price:900},
+  heli: {name:'Вертолёт', img:'heli.png', svg:'heli', rarity:'epic', price:1200},
+  f1: {name:'Болид F1', img:'f1.png', svg:'sport', rarity:'legend', price:5000},
+  plane: {name:'Частный джет', img:'plane.png', svg:'plane', rarity:'legend', price:6000},
+  rocket: {name:'Ракетомобиль', img:'rocket.png', svg:'rocket', rarity:'mythic', price:20000},
+  ufo: {name:'Летающая тарелка', img:'ufo.png', svg:'ufo', rarity:'mythic', price:30000},
+  lamb:  {name:'Lamborghini Huracán', img:'lamb.png', svg:'sport', rarity:'legend', price:6500000},
+  amg:   {name:'Mercedes-Benz G63 AMG', img:'amg.png', svg:'suv', rarity:'legend', price:3500000},
+  policeL: {name:'Dodge Charger Pursuit', img:'police.png', svg:'sedan', rarity:'legend', price:1900000},
+  dodge: {name:'Dodge Challenger SRT', img:'dodge.png', svg:'sport', rarity:'legend', price:2200000},
+  bmw:   {name:'BMW M5 F90', img:'bmw.png', svg:'sport', rarity:'legend', price:2800000}
+};
+
+const CASES = [
+  {id:'start',  name:'СТАРТ', price:100,   pool:{lada:40, taxi:30, uaz:20, bus:8, police:1, vesta:1}},
+  {id:'street', name:'СТРИТ', price:120,   pool:{}},
+  {id:'sport',  name:'СПОРТ', price:900,   pool:{}},
+  {id:'lux',    name:'ЛЮКС',  price:4500,  pool:{}},
+  {id:'myth',   name:'МИФ',   price:9500,  pool:{}},
+  {id:'lege',   name:'ЛЕГЕНДА', price:250000, pool:{lamb:20, amg:20, policeL:20, dodge:20, bmw:20}}
+];
+
+const QUESTS_LIST = [
+  {id: 'q_open', desc: 'Открой 3 кейса', target: 3, reward: 300, action: 'opened'},
+  {id: 'q_sell', desc: 'Продай 2 машины', target: 2, reward: 200, action: 'sold'},
+  {id: 'q_game', desc: 'Победи в Угадай Число', target: 1, reward: 500, action: 'guess_win'}
+];
+
+const ACHIEVEMENTS = [
+  {id: 'first_case', name: 'Первый шаг', desc: 'Открой 1 кейс', reward: 500, icon: '📦', check: (u) => u.stats.opened >= 1},
+  {id: 'rich', name: 'Богач', desc: 'Накопи 50,000 евро', reward: 5000, icon: '💎', check: (u) => u.balance >= 50000},
+  {id: 'collector', name: 'Коллекционер', desc: 'Собери 5 машин', reward: 1000, icon: '🚗', check: (u) => u.inventory.length >= 5},
+  {id: 'lucky', name: 'Счастливчик', desc: 'Получи Мифическую тачку', reward: 2000, icon: '🍀', check: (u) => u.stats.best && ITEMS[u.stats.best] && ITEMS[u.stats.best].rarity === 'mythic'}
+];
+
+const START_BALANCE = 1000;
+const DAILY_BONUS   = 500;
+const BONUS_CD      = 24*60*60*1000;
+
+const BADGES_LIST = [
+  { id: 'none', name: 'Без', file: null },
+  { id: 'v', name: 'Фиолетовая', file: 'v.webp' },
+  { id: 'k', name: 'Черная', file: 'k.webp' },
+  { id: 'a', name: 'Синяя', file: 'a.webp' },
+  { id: 't', name: 'Красная', file: 't.webp' },
+  { id: 'gal', name: 'Зеленая', file: 'gal.webp' },
+  { id: 'l', name: 'Серая', file: 'l.webp' }
+];
+
+const NAME_COLORS = ['#e8eaf2', '#00e5ff', '#ff007f', '#00ff88', '#fbbf24', '#ef4444', '#a855f7'];
+
+const K_USERS = 'autocase_users_v26';
+const K_SESS  = 'autocase_session_v26';
+const K_PROMOS = 'autocase_promos_v26';
+
+/* ===== Storage ===== */
+function getUsers() {
+  let merged = {};
+  const keys = ['autocase_users_v26', 'autocase_users_v25', 'autocase_users_v24', 'autocase_users_backup'];
+  for (let i = 0; i < keys.length; i++) {
+    try {
+      const d = localStorage.getItem(keys[i]);
+      if (d) {
+        const parsed = JSON.parse(d);
+        for (let k in parsed) {
+          const u = parsed[k];
+          if (!u.lastUpdated) u.lastUpdated = 0;
+          if (!merged[k] || u.lastUpdated > (merged[k].lastUpdated || 0)) merged[k] = u;
+        }
+      }
+    } catch(e) {}
+  }
+  for (let v = 23; v >= 10; v--) {
+    try {
+      const d = localStorage.getItem('autocase_users_v' + v);
+      if (d) {
+        const parsed = JSON.parse(d);
+        for (let k in parsed) {
+          const u = parsed[k];
+          if (!u.lastUpdated) u.lastUpdated = 0;
+          if (!merged[k] || u.lastUpdated > (merged[k].lastUpdated || 0)) merged[k] = u;
+        }
+      }
+    } catch(e) {}
+  }
+  return merged;
+}
+
+function setUsers(u) {
+  try {
+    const str = JSON.stringify(u);
+    localStorage.setItem(K_USERS, str);
+    localStorage.setItem('autocase_users_v25', str);
+    localStorage.setItem('autocase_users_backup', str);
+  } catch(e) {
+    console.error("Quota exceeded", e);
+    toast('⚠️ Ошибка сохранения: память переполнена');
+  }
+}
+
+function getPromos() { try { return JSON.parse(localStorage.getItem(K_PROMOS)) || {}; } catch(e) { return {}; } }
+function setPromos(p) { try { localStorage.setItem(K_PROMOS, JSON.stringify(p)); } catch(e) {} }
+function hashPass(s) { let h = 5381; for (let i=0; i<s.length; i++) h = ((h<<5)+h) ^ s.charCodeAt(i); return (h>>>0).toString(36) + '_' + s.length; }
+const fmt = n => Math.round(n).toLocaleString('ru-RU');
+
+/* ==========================================================================
+   IndexedDB (ИСПРАВЛЕНО: ждёт инициализации БД)
+   ========================================================================== */
+let db;
+const dbReq = indexedDB.open('AutoCaseMediaDB', 1);
+dbReq.onupgradeneeded = e => { if (!e.target.result.objectStoreNames.contains('media')) e.target.result.createObjectStore('media'); };
+dbReq.onsuccess = e => { db = e.target.result; };
+dbReq.onerror = e => { console.error('IndexedDB error:', e); };
+
+/**
+ * ИСПРАВЛЕНО: сохраняем blob только когда БД готова.
+ * Раньше при db=null функция просто вызывала callback и НЕ сохраняла файл —
+ * из-за этого баннеры/треки не отображались (getMediaBlob возвращал null).
+ */
+function saveMediaBlob(key, blob, callback) {
+  if (!db) {
+    let waited = 0;
+    const wait = setInterval(() => {
+      waited += 100;
+      if (db) {
+        clearInterval(wait);
+        saveMediaBlob(key, blob, callback);
+      } else if (waited > 3000) {
+        clearInterval(wait);
+        console.error('IndexedDB не инициализировалась за 3с');
+        if (callback) callback(false);
+      }
+    }, 100);
+    return;
+  }
+  try {
+    const tx = db.transaction('media', 'readwrite');
+    const req = tx.objectStore('media').put(blob, key);
+    req.onsuccess = () => { if (callback) callback(true); };
+    tx.onerror = (e) => { console.error('Save blob error:', e); if (callback) callback(false); };
+  } catch(e) {
+    console.error('Save blob error:', e);
+    if (callback) callback(false);
+  }
+}
+
+/**
+ * ИСПРАВЛЕНО: retry при неготовой БД (для показа сохранённых баннеров при загрузке).
+ */
+function getMediaBlob(key, callback, retry) {
+  retry = retry || 0;
+  if (!db) {
+    if (retry > 30) { if (callback) callback(null); return; }
+    setTimeout(() => getMediaBlob(key, callback, retry + 1), 100);
+    return;
+  }
+  try {
+    const tx = db.transaction('media', 'readonly');
+    const req = tx.objectStore('media').get(key);
+    req.onsuccess = (e) => { if (callback) callback(e.target.result); };
+    tx.onerror = () => { if (callback) callback(null); };
+  } catch(e) {
+    if (callback) callback(null);
+  }
+}
+
+function deleteMediaBlob(key) {
+  if (!db) {
+    let waited = 0;
+    const wait = setInterval(() => {
+      waited += 100;
+      if (db) { clearInterval(wait); deleteMediaBlob(key); }
+      else if (waited > 3000) clearInterval(wait);
+    }, 100);
+    return;
+  }
+  try { db.transaction('media', 'readwrite').objectStore('media').delete(key); } catch(e) {}
+}
+
+/* ===== State ===== */
+let username = null;
+let user = null;
+let authMode = 'login';
+let spinning = false;
+let musicPlaying = false;
+let mergeSlots = [null, null, null];
+
+function isOwner() {
+  return username && (username.toLowerCase() === 'mrazota' || username.toLowerCase() === 'owner' || username.toLowerCase() === 'director');
+}
+
+let toastTimer = null;
+function toast(text) {
+  const el = $('#toast');
+  if(!el) return;
+  el.textContent = text;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+function showConfirm(title, text) {
+  return new Promise((resolve) => {
+    const modal = $('#confirm-modal');
+    if(!modal) return resolve(false);
+    $('#confirm-title').textContent = title;
+    $('#confirm-text').textContent = text;
+    const btnOk = $('#confirm-ok');
+    const btnCancel = $('#confirm-cancel');
+    const cleanup = () => {
+      modal.classList.remove('show');
+      btnOk.removeEventListener('click', onOk);
+      btnCancel.removeEventListener('click', onCancel);
+    };
+    const onOk = () => { cleanup(); resolve(true); };
+    const onCancel = () => { cleanup(); resolve(false); };
+    btnOk.addEventListener('click', onOk);
+    btnCancel.addEventListener('click', onCancel);
+    modal.classList.add('show');
+  });
+}
+
+function playSfx(type) {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    if (type === 'click') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(800, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(300, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.1);
+      osc.start(); osc.stop(ctx.currentTime + 0.1);
+    } else if (type === 'rare') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(400, ctx.currentTime);
+      osc.frequency.setValueAtTime(600, ctx.currentTime + 0.1);
+      osc.frequency.setValueAtTime(800, ctx.currentTime + 0.2);
+      osc.frequency.setValueAtTime(1200, ctx.currentTime + 0.3);
+      gain.gain.setValueAtTime(0.2, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+      osc.start(); osc.stop(ctx.currentTime + 0.5);
+    }
+  } catch(e) {}
+}
+
+function ensureUserDefaults(u, usernameKey) {
+  if (!u) return;
+  if (!u.lastUpdated) u.lastUpdated = Date.now();
+  if (!u.display) u.display = usernameKey;
+  if (typeof u.balance !== 'number') u.balance = 1000;
+  if (!u.inventory) u.inventory = [];
+  if (!u.stats) u.stats = {opened: 0, best: null, history: []};
+  if (!u.stats.history) u.stats.history = [];
+  if (!u.achievements) u.achievements = [];
+  if (!u.usedPromos) u.usedPromos = [];
+  if (!u.settings) u.settings = {};
+  if (!u.settings.theme) u.settings.theme = 'dark';
+  if (!u.settings.font) u.settings.font = 'default';
+  if (!u.settings.nameColor) u.settings.nameColor = '#e8eaf2';
+  if (!u.settings.badge) u.settings.badge = 'none';
+  if (u.lastBonus === undefined) u.lastBonus = 0;
+  if (!u.questProgress) u.questProgress = {};
+  if (!u.loginStreak) u.loginStreak = 0;
+  if (!u.lastLoginDate) u.lastLoginDate = null;
+  if (!Array.isArray(u.settings.musicList)) u.settings.musicList = [];
+  if (!Array.isArray(u.settings.bannerList)) u.settings.bannerList = [];
+}
+
+function checkDailyStreak() {
+  if (!user) return;
+  const today = new Date().toDateString();
+  const last = user.lastLoginDate ? new Date(user.lastLoginDate).toDateString() : null;
+  if (last === today) return;
+  const yesterday = new Date(); yesterday.setDate(yesterday.getDate() - 1);
+  if (last === yesterday.toDateString()) user.loginStreak = (user.loginStreak || 0) + 1;
+  else user.loginStreak = 1;
+  user.lastLoginDate = Date.now();
+  saveUser();
+  if (user.loginStreak > 1) {
+    const streakBonus = 500 + (user.loginStreak * 100);
+    user.balance += streakBonus;
+    saveUser(); renderAll();
+    setTimeout(() => toast(`🔥 Дней подряд: ${user.loginStreak}. Бонус: +${streakBonus} €`), 1500);
+  }
+}
+
+/* ===== Auth ===== */
+function setMsg(text, type) {
+  const m = $('#auth-msg');
+  if(!m) return;
+  m.textContent = text || '';
+  m.className = 'msg' + (type ? ' ' + type : '');
+}
+
+$$('[data-auth]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    authMode = btn.dataset.auth;
+    $$('[data-auth]').forEach(b => b.classList.toggle('active', b === btn));
+    $('#in-pass2').classList.toggle('hidden', authMode !== 'reg');
+    $('#auth-submit').textContent = authMode === 'login' ? 'ВОЙТИ' : 'СОЗДАТЬ АККАУНТ';
+    setMsg('');
+  });
+});
+
+$('#auth-form').addEventListener('submit', e => {
+  e.preventDefault();
+  const login = $('#in-user').value.trim();
+  const pass  = $('#in-pass').value;
+  const pass2 = $('#in-pass2').value;
+  if (login.length < 3) { setMsg('Логин минимум 3 символа', 'err'); return; }
+  if (!/^[a-zA-Zа-яА-Я0-9_]+$/.test(login)) { setMsg('Только буквы, цифры и _', 'err'); return; }
+  if (pass.length < 4)  { setMsg('Пароль минимум 4 символа', 'err'); return; }
+
+  const users = getUsers();
+  const key = login.toLowerCase();
+
+  if (authMode === 'reg') {
+    if (pass !== pass2) { setMsg('Пароли не совпадают', 'err'); return; }
+    if (users[key]) { setMsg('Логин уже занят', 'err'); return; }
+    users[key] = {
+      display: login, pass: hashPass(pass), balance: START_BALANCE,
+      inventory: [], stats: {opened:0, best:null, history:[]},
+      achievements: [], usedPromos: [], questProgress: {},
+      lastBonus: 0, loginStreak: 0, lastLoginDate: null,
+      created: Date.now(), lastUpdated: Date.now(),
+      settings: {theme: 'dark', font: 'default', avatarData: null, badge: 'none', nameColor: '#e8eaf2', musicList: [], currentMusicId: null, bannerList: [], currentBannerId: null}
+    };
+    setUsers(users);
+    setMsg('Аккаунт создан! Входим…', 'ok');
+    setTimeout(() => doLogin(key), 550);
+  } else {
+    if (!users[key]) { setMsg('Аккаунт не найден', 'err'); return; }
+    if (users[key].pass !== hashPass(pass)) { setMsg('Неверный пароль', 'err'); return; }
+    doLogin(key);
+  }
+});
+
+function doLogin(key) {
+  username = key;
+  const users = getUsers();
+  user = users[key];
+  if (!user) { setMsg('Ошибка входа', 'err'); return; }
+  ensureUserDefaults(user, key);
+  saveUser();
+  try { localStorage.setItem(K_SESS, key); } catch(e){}
+  setMsg('');
+  $('#in-user').value = ''; $('#in-pass').value = ''; $('#in-pass2').value = '';
+  try { enterGame(); } catch (error) {
+    console.error("Ошибка при загрузке игры:", error);
+    $('#screen-game').classList.remove('active');
+    $('#screen-auth').classList.add('active');
+    setMsg('Ошибка при загрузке игры', 'err');
+  }
+}
+
+function saveUser() {
+  if (!username || !user) return;
+  user.lastUpdated = Date.now();
+  const users = getUsers();
+  users[username] = user;
+  setUsers(users);
+}
+
+async function logout() {
+  const confirmed = await showConfirm('Выход', 'Выйти из аккаунта?');
+  if (!confirmed) return;
+  if (bgMusic) { bgMusic.pause(); musicPlaying = false; }
+  try { localStorage.removeItem(K_SESS); } catch(e){}
+  username = null; user = null; spinning = false;
+  userInSession = false; ownerInSession = false; activeSessionUser = null; pendingRequest = null;
+  closeOverlay(); closeBadgeModal();
+  $('#owner-chat-overlay').classList.remove('show');
+  $('#owner-request-overlay').classList.remove('show');
+  $('#support-overlay').classList.remove('show');
+  $('#screen-game').classList.remove('active');
+  $('#screen-auth').classList.add('active');
+  setMsg('');
+}
+
+function enterGame() {
+  userInSession = false; ownerInSession = false; activeSessionUser = null; pendingRequest = null;
+  $('#screen-auth').classList.remove('active');
+  $('#screen-game').classList.add('active');
+  applyTheme(user.settings.theme || 'dark');
+  applyFont(user.settings.font || 'default');
+  switchTab('cases');
+  renderAll();
+  initSupportSubscriptions();
+  checkDailyStreak();
+  const volInput = $('#music-volume');
+  if (volInput) bgMusic.volume = parseFloat(volInput.value);
+  pubnub.subscribe({ channels: [GLOBAL_FEED_CHANNEL] });
+}
+
+function applyTheme(theme) {
+  document.body.dataset.theme = theme || 'dark';
+  $$('.theme-btn').forEach(b => b.classList.toggle('active', b.dataset.theme === theme));
+}
+
+function applyFont(font) {
+  document.body.dataset.font = font || 'default';
+  $$('.font-btn').forEach(b => b.classList.toggle('active', b.dataset.font === font));
+}
+
+/* ==========================================================================
+   Render (ИСПРАВЛЕНО: изоляция функций через safe-обёртку)
+   ========================================================================== */
+function renderAll() {
+  if (!user) return;
+  const safe = (fn, name) => {
+    try { fn(); } catch(e) { console.error('Ошибка рендера ' + name + ':', e); }
+  };
+  safe(updateHUD, 'updateHUD');
+  safe(renderCases, 'renderCases');
+  safe(renderHistory, 'renderHistory');
+  safe(renderInventory, 'renderInventory');
+  safe(renderMerge, 'renderMerge');
+  safe(renderProfile, 'renderProfile');
+  safe(renderQuests, 'renderQuests');
+  safe(renderSettings, 'renderSettings');
+  safe(renderAchievements, 'renderAchievements');
+  safe(renderTrackList, 'renderTrackList');
+  safe(renderBannerList, 'renderBannerList');
+  safe(checkAdminAccess, 'checkAdminAccess');
+}
+
+function getAvatarHtml() {
+  if (user.settings.avatarData) return `<img src="${user.settings.avatarData}" class="avatar-img" alt="avatar">`;
+  return DEFAULT_AVATAR_SVG;
+}
+
+function getBadgeHtml(badgeId, isTopbar = false) {
+  if (badgeId === 'none' || !badgeId) return '';
+  const size = isTopbar ? '16px' : '24px';
+  const style = isTopbar ? '' : 'width:100%;height:100%;';
+  const badgeObj = BADGES_LIST.find(b => b.id === badgeId);
+  if (badgeObj && badgeObj.file) {
+    return `<div class="badge-icon" style="width:${size};height:${size};${style}">
+      <img src="${badgeObj.file}" class="badge-img" alt="badge" onerror="this.style.display='none'; this.parentElement.innerHTML='';">
+    </div>`;
+  }
+  return '';
+}
+
+function updateHUD() {
+  $('#top-avatar').innerHTML = getAvatarHtml();
+  $('#p-avatar').innerHTML = getAvatarHtml();
+  $('#top-name').textContent = user.display;
+  $('#p-name').textContent = user.display;
+  const nColor = user.settings.nameColor || '#e8eaf2';
+  $('#top-name').style.color = nColor;
+  $('#p-name').style.color = nColor;
+  $('#top-name').style.textShadow = `0 0 10px ${nColor}80`;
+  $('#p-name').style.textShadow = `0 0 10px ${nColor}80`;
+  $('#top-badge').innerHTML = getBadgeHtml(user.settings.badge, true);
+  $('#p-badge').innerHTML = getBadgeHtml(user.settings.badge, false);
+  const lvl = 1 + Math.floor((user.stats.opened || 0) / 10);
+  $('#top-lvl').textContent = 'Уровень ' + lvl;
+  $('#top-balance-val').textContent = fmt(user.balance);
+  $('#top-balance').innerHTML = SVG_COIN + `<span id="top-balance-val">${fmt(user.balance)}</span>`;
+  const streakEl = $('#st-streak');
+  if (streakEl) streakEl.textContent = user.loginStreak || 0;
+}
+
+/* ИСПРАВЛЕНО: безопасный switchTab (ошибка рендера не ломает навигацию) */
+function switchTab(tab) {
+  $$('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  $$('.tabpage').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tab));
+  $('.content').scrollTop = 0;
+  try {
+    if (tab === 'profile') renderProfile();
+    if (tab === 'settings') { renderTrackList(); renderBannerList(); }
+  } catch(e) { console.error('switchTab render error:', e); }
+}
+
+$$('.nav-btn').forEach(btn => { btn.addEventListener('click', () => switchTab(btn.dataset.tab)); });
+
+$('#btn-fullscreen').addEventListener('click', () => {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(() => toast('Ошибка полного экрана'));
+  } else {
+    document.exitFullscreen();
+  }
+});
+
+/* ===== Cases ===== */
+function renderCases() {
+  const grid = $('#case-grid');
+  if(!grid) return;
+  grid.innerHTML = '';
+  CASES.forEach(c => {
+    const card = document.createElement('button');
+    card.className = 'case-card';
+    if (c.id === 'lege') card.classList.add('legendary');
+    let caseIcon = '';
+    if (c.id === 'start') {
+      caseIcon = `<div class="case-icon-wrap"><img src="case.png" onerror="this.src='data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22 fill=%22none%22 stroke=%22%2300e5ff%22 stroke-width=%226%22%3E%3Cpath d=%22M10 35 L50 15 L90 35 L90 85 L50 105 L10 85 Z%22/%3E%3Cpath d=%22M10 35 L50 55 L90 35%22/%3E%3Cpath d=%22M50 55 L50 105%22/%3E%3C/svg%3E'"></div>`;
+    } else if (c.id === 'lege') {
+      caseIcon = `<div class="case-icon-wrap"><img src="Lege.png" onerror="this.src='data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22 fill=%22none%22 stroke=%22%23ffd700%22 stroke-width=%226%22%3E%3Cpath d=%22M10 35 L50 15 L90 35 L90 85 L50 105 L10 85 Z%22/%3E%3Cpath d=%22M10 35 L50 55 L90 35%22/%3E%3Cpath d=%22M50 55 L50 105%22/%3E%3C/svg%3E'"></div>`;
+    } else {
+      caseIcon = `<div class="case-icon-wrap" style="color:var(--accent)">${ITEM_SVGS.case}</div>`;
+    }
+    const isEmpty = Object.keys(c.pool).length === 0;
+    if (isEmpty) card.classList.add('disabled');
+    card.innerHTML = `
+      ${caseIcon}
+      <div class="case-name">${c.name}</div>
+      <div class="case-price">${SVG_COIN} ${fmt(c.price)}</div>
+      ${isEmpty ? '<div style="font-size:10px;color:var(--muted);margin-top:5px;">ПУСТО</div>' : ''}
+    `;
+    card.addEventListener('click', () => {
+      if (isEmpty) return toast('Этот кейс временно пуст');
+      openCase(c);
+    });
+    grid.appendChild(card);
+  });
+}
+
+function renderHistory() {
+  const list = $('#history-list');
+  if(!list) return;
+  list.innerHTML = '';
+  const hist = user.stats.history || [];
+  if (hist.length === 0) { list.innerHTML = '<div style="font-size:12px; color:var(--muted); padding:10px;">Пока ничего не выпало</div>'; return; }
+  hist.forEach(id => {
+    const it = ITEMS[id];
+    if(!it) return;
+    const r = RARITY[it.rarity];
+    const icon = it.img ? `<img src="${it.img}" onerror="this.style.display='none'">` : (ITEM_SVGS[it.svg] || '');
+    const div = document.createElement('div');
+    div.className = 'history-item';
+    div.style.borderColor = r.color;
+    div.innerHTML = icon;
+    list.appendChild(div);
+  });
+}
+
+/* ===== Open Case ===== */
+function weightedPick(pool) {
+  const entries = Object.keys(pool).map(k => [k, pool[k]]);
+  let total = 0;
+  for (let i=0; i<entries.length; i++) total += entries[i][1];
+  let r = Math.random() * total;
+  for (let i=0; i<entries.length; i++) { r -= entries[i][1]; if (r <= 0) return entries[i][0]; }
+  return entries[entries.length-1][0];
+}
+
+const WIN_INDEX = 46, STRIP_LEN = 56;
+
+function openCase(c) {
+  if (spinning) return;
+  if (user.balance < c.price) { toast('Недостаточно евро'); return; }
+  playSfx('click');
+  user.balance -= c.price;
+  saveUser(); updateHUD();
+  const winId = weightedPick(c.pool);
+  const strip = [];
+  for (let i=0; i<STRIP_LEN; i++) strip.push(weightedPick(c.pool));
+  strip[WIN_INDEX] = winId;
+  spinning = true;
+  $('#open-title').textContent = c.name;
+  $('#drop-result').innerHTML = '';
+  $('#open-overlay').classList.add('show');
+  requestAnimationFrame(() => { setTimeout(() => spin(strip, () => { spinning = false; onDrop(winId); }), 40); });
+}
+
+function spin(strip, done) {
+  const el = $('#roulette');
+  const isDesktop = window.innerWidth >= 900;
+  const itemW = isDesktop ? 110 : 84;
+  const gap = isDesktop ? 10 : 8;
+  const step = itemW + gap;
+
+  el.innerHTML = strip.map(id => {
+    const it = ITEMS[id], r = RARITY[it.rarity];
+    const icon = it.img ? `<img src="${it.img}" style="width:100%;height:100%;object-fit:contain" onerror="this.style.display='none'">` : (ITEM_SVGS[it.svg] || '');
+    return `<div class="ritem" style="border-color:${r.color};box-shadow:inset 0 0 22px ${r.glow}">
+      <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:${r.color}">${icon}</div>
+      <div class="rname">${it.name}</div>
+    </div>`;
+  }).join('');
+  el.style.transition = 'none';
+  el.style.transform = 'translate3d(0px,-50%,0)';
+  void el.offsetWidth;
+  const wrapW = el.parentElement.clientWidth;
+  const jitter = (Math.random() - 0.5) * itemW * 0.5;
+  const x = wrapW/2 - (WIN_INDEX * step + itemW/2) + jitter;
+  el.style.transition = 'transform 5s cubic-bezier(.08,.72,.1,1)';
+  el.style.transform  = `translate3d(${x}px,-50%,0)`;
+  setTimeout(done, 5150);
+}
+
+function onDrop(winId) {
+  const it = ITEMS[winId], r = RARITY[it.rarity];
+  const inst = { uid: Date.now() + '_' + Math.random().toString(36).slice(2, 8), id: winId, ts: Date.now() };
+  user.inventory.push(inst);
+  user.stats.opened++;
+  if (!user.stats.history) user.stats.history = [];
+  user.stats.history.unshift(winId);
+  if (user.stats.history.length > 5) user.stats.history.pop();
+  if (!user.stats.best || (ITEMS[user.stats.best] && it.price > ITEMS[user.stats.best].price)) user.stats.best = winId;
+  updateQuestProgress('opened');
+  const oldLvl = 1 + Math.floor((user.stats.opened - 1) / 10);
+  const newLvl = 1 + Math.floor(user.stats.opened / 10);
+  if (newLvl > oldLvl) { user.balance += 1000; toast(`Новый уровень ${newLvl}! +1000 €`); launchConfetti(); }
+  saveUser(); renderAll();
+  if (navigator.vibrate) { try { navigator.vibrate(it.rarity === 'mythic' || it.rarity === 'legend' ? [30,60,30,60,60] : 25); } catch(e){} }
+  if (it.rarity === 'mythic' || it.rarity === 'legend') {
+    playSfx('rare');
+    $('#app-container').classList.add('shake');
+    setTimeout(() => $('#app-container').classList.remove('shake'), 500);
+    pubnub.publish({ channel: GLOBAL_FEED_CHANNEL, message: { user: user.display, item: it.name, rarity: it.rarity } });
+  } else { playSfx('click'); }
+
+  const icon = it.img ? `<img src="${it.img}" style="width:100%;height:100%;object-fit:contain" onerror="this.style.display='none'">` : (ITEM_SVGS[it.svg] || '');
+  $('#drop-result').innerHTML = `
+    <div class="drop-card" style="--c:${r.color};--g:${r.glow}">
+      <div class="drop-rarity">${r.name}</div>
+      <div class="drop-icon">${icon}</div>
+      <div class="drop-name">${it.name}</div>
+      <div class="drop-price">${SVG_COIN} ${fmt(it.price)}</div>
+    </div>
+    <div class="open-actions">
+      <button class="btn-primary" id="drop-keep">ОСТАВИТЬ СЕБЕ</button>
+      <button class="btn-outline" id="drop-sell">Продать за ${fmt(it.price)} ${SVG_COIN}</button>
+    </div>
+  `;
+  $('#drop-keep').addEventListener('click', closeOverlay);
+  $('#drop-sell').addEventListener('click', () => { sellInstance(inst.uid, true); closeOverlay(); });
+}
+
+function closeOverlay() { $('#open-overlay').classList.remove('show'); spinning = false; }
+$('#close-open').addEventListener('click', () => { if (spinning) return; closeOverlay(); });
+
+/* ===== Merge ===== */
+function renderMerge() {
+  const slotsEl = $('#merge-slots');
+  if(!slotsEl) return;
+  for (let i = 0; i < 3; i++) {
+    const slot = slotsEl.children[i];
+    slot.innerHTML = '';
+    slot.classList.remove('filled');
+    if (mergeSlots[i]) {
+      const inst = user.inventory.find(x => x.uid === mergeSlots[i]);
+      if (inst) {
+        const it = ITEMS[inst.id];
+        const icon = it.img ? `<img src="${it.img}" onerror="this.style.display='none'">` : (ITEM_SVGS[it.svg] || '');
+        slot.innerHTML = icon;
+        slot.classList.add('filled');
+      } else mergeSlots[i] = null;
+    }
+    slot.onclick = () => { if (mergeSlots[i]) { mergeSlots[i] = null; renderMerge(); } };
+  }
+  const btnMerge = $('#btn-merge');
+  const filledCount = mergeSlots.filter(x => x !== null).length;
+  let canMerge = false;
+  if (filledCount === 3) {
+    const items = mergeSlots.map(uid => user.inventory.find(x => x.uid === uid));
+    if (items.every(it => it && ITEMS[it.id].rarity === ITEMS[items[0].id].rarity)) canMerge = true;
+  }
+  btnMerge.disabled = !canMerge;
+  btnMerge.style.opacity = canMerge ? '1' : '0.5';
+  btnMerge.onclick = () => {
+    if (!canMerge) return;
+    playSfx('click');
+    const rarity = ITEMS[user.inventory.find(x => x.uid === mergeSlots[0]).id].rarity;
+    const nextRarity = { common:'rare', rare:'epic', epic:'legend', legend:'mythic', mythic:'mythic' }[rarity];
+    user.inventory = user.inventory.filter(x => !mergeSlots.includes(x.uid));
+    const possible = Object.keys(ITEMS).filter(k => ITEMS[k].rarity === nextRarity);
+    const newId = possible[Math.floor(Math.random() * possible.length)];
+    user.inventory.push({ uid: Date.now() + '', id: newId, ts: Date.now() });
+    mergeSlots = [null, null, null];
+    saveUser(); renderAll(); launchConfetti(); toast('Синтез успешен!');
+  };
+  const list = $('#merge-inventory');
+  list.innerHTML = '';
+  const sorted = user.inventory.slice().sort((a,b) => ITEMS[a.id].price - ITEMS[b.id].price);
+  if(sorted.length === 0) list.innerHTML = '<div style="text-align:center; padding:20px; color:var(--muted); font-size:13px;">Инвентарь пуст</div>';
+  sorted.forEach(inst => {
+    const it = ITEMS[inst.id], r = RARITY[it.rarity];
+    const icon = it.img ? `<img src="${it.img}" onerror="this.style.display='none'">` : (ITEM_SVGS[it.svg] || '');
+    const isSelected = mergeSlots.includes(inst.uid);
+    if (isSelected) return;
+    const div = document.createElement('div');
+    div.className = 'inv-item';
+    div.style.setProperty('--c', r.color);
+    div.innerHTML = `
+      <div class="inv-icon" style="color:${r.color}">${icon}</div>
+      <div class="inv-info">
+        <div class="inv-name">${it.name}</div>
+        <div class="inv-rar" style="color:${r.color}">${r.name}</div>
+      </div>
+      <button class="btn-outline" style="width:auto; padding:8px 12px; font-size:12px;">Выбрать</button>
+    `;
+    div.querySelector('button').onclick = () => {
+      const emptySlot = mergeSlots.indexOf(null);
+      if (emptySlot !== -1) { mergeSlots[emptySlot] = inst.uid; renderMerge(); }
+      else toast('Все слоты заполнены');
+    };
+    list.appendChild(div);
+  });
+}
+
+/* ===== Quests ===== */
+function updateQuestProgress(action) {
+  if (!user.questProgress) user.questProgress = {};
+  QUESTS_LIST.forEach(q => {
+    if (q.action === action) {
+      const current = user.questProgress[q.id] || 0;
+      if (current < q.target) {
+        user.questProgress[q.id] = current + 1;
+        if (user.questProgress[q.id] >= q.target) toast(`Задание выполнено: ${q.desc}!`);
+      }
+    }
+  });
+}
+
+function renderQuests() {
+  const list = $('#quest-list');
+  if(!list) return;
+  list.innerHTML = '';
+  QUESTS_LIST.forEach(q => {
+    const current = (user.questProgress && user.questProgress[q.id]) || 0;
+    const isDone = current >= q.target;
+    const isClaimed = user.questsClaimed && user.questsClaimed[q.id];
+    const el = document.createElement('div');
+    el.className = 'quest-item';
+    el.innerHTML = `
+      <div class="quest-info">
+        <div>${q.desc}</div>
+        <div style="font-size:11px; color:var(--muted);">${Math.min(current, q.target)} / ${q.target}</div>
+      </div>
+      <div class="quest-reward">${q.reward} €</div>
+    `;
+    if (isDone && !isClaimed) {
+      el.style.borderColor = 'var(--success)';
+      el.style.cursor = 'pointer';
+      el.addEventListener('click', () => {
+        if (!user.questsClaimed) user.questsClaimed = {};
+        user.questsClaimed[q.id] = true;
+        user.balance += q.reward;
+        playSfx('click'); saveUser(); renderAll();
+        toast(`Награда: +${q.reward} €`);
+      });
+      el.innerHTML += `<div style="position:absolute; right:10px; top:10px; color:var(--success); font-weight:bold; font-size:11px;">ЗАБРАТЬ</div>`;
+    }
+    list.appendChild(el);
+  });
+}
+
+function renderAchievements() {
+  const list = $('#ach-list');
+  if(!list) return;
+  list.innerHTML = '';
+  ACHIEVEMENTS.forEach(ach => {
+    const isClaimed = user.achievements.includes(ach.id);
+    const canClaim = !isClaimed && ach.check(user);
+    const el = document.createElement('div');
+    el.className = 'ach-item';
+    el.innerHTML = `
+      <div class="ach-icon">${ach.icon}</div>
+      <div class="ach-info">
+        <div class="ach-title">${ach.name}</div>
+        <div class="ach-desc">${ach.desc} (+${ach.reward} €)</div>
+      </div>
+      <button class="ach-btn" ${isClaimed ? 'disabled' : ''}>${isClaimed ? 'Получено' : (canClaim ? 'Забрать' : 'В процессе')}</button>
+    `;
+    if (canClaim) {
+      el.querySelector('button').addEventListener('click', () => {
+        user.achievements.push(ach.id);
+        user.balance += ach.reward;
+        saveUser(); renderAll(); playSfx('rare');
+        toast(`Достижение! +${ach.reward} €`);
+      });
+    }
+    list.appendChild(el);
+  });
+}
+
+/* ===== Minigames ===== */
+const btnStartClicker = $('#btn-start-clicker');
+const mgTarget = $('#mg-target');
+const mgTimerEl = $('#mg-timer');
+const mgScoreEl = $('#mg-score');
+const mgClickerArea = $('#mg-clicker-area');
+let clickerActive = false, clickerScore = 0, clickerTime = 15, clickerInterval = null;
+
+if (btnStartClicker) {
+  btnStartClicker.addEventListener('click', () => {
+    if (clickerActive) return;
+    playSfx('click');
+    clickerActive = true; clickerScore = 0; clickerTime = 15.0;
+    mgScoreEl.textContent = '0'; mgTimerEl.textContent = '15.0';
+    btnStartClicker.disabled = true; btnStartClicker.textContent = 'ИГРА...';
+    mgTarget.classList.remove('hidden');
+    const moveTarget = () => {
+      const areaW = mgClickerArea.clientWidth;
+      const areaH = mgClickerArea.clientHeight;
+      mgTarget.style.left = Math.random() * (areaW - 50) + 'px';
+      mgTarget.style.top = Math.random() * (areaH - 50) + 'px';
+      mgTarget.style.transform = 'none';
+    };
+    moveTarget();
+    mgTarget.onclick = (e) => {
+      if (!clickerActive) return;
+      e.stopPropagation(); playSfx('click');
+      clickerScore += 50; mgScoreEl.textContent = clickerScore;
+      moveTarget();
+      if (navigator.vibrate) try { navigator.vibrate(15); } catch(e){}
+    };
+    clickerInterval = setInterval(() => {
+      clickerTime -= 0.1; mgTimerEl.textContent = clickerTime.toFixed(1);
+      if (clickerTime <= 0) {
+        clearInterval(clickerInterval); clickerActive = false;
+        mgTarget.classList.add('hidden');
+        btnStartClicker.disabled = false; btnStartClicker.textContent = 'ИГРАТЬ';
+        if (clickerScore > 0) {
+          user.balance += clickerScore; saveUser(); renderAll();
+          toast(`Заработано ${clickerScore} €!`); launchConfetti();
+        } else toast('Ни разу не попали :(');
+      }
+    }, 100);
+  });
+}
+
+const guessBtns = $$('.guess-btn');
+const btnPlayGuess = $('#btn-play-guess');
+const mgGuessBet = $('#mg-guess-bet');
+let selectedGuess = null;
+
+if (guessBtns.length && btnPlayGuess) {
+  guessBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      guessBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      selectedGuess = parseInt(btn.dataset.num);
+      btnPlayGuess.disabled = false;
+      playSfx('click');
+    });
+  });
+  btnPlayGuess.addEventListener('click', () => {
+    const bet = parseInt(mgGuessBet.value);
+    if (isNaN(bet) || bet < 10) return toast('Мин. ставка 10');
+    if (bet > user.balance) return toast('Недостаточно евро');
+    if (!selectedGuess) return toast('Выберите число');
+    playSfx('click');
+    user.balance -= bet; saveUser(); renderAll();
+    const winNum = Math.floor(Math.random() * 5) + 1;
+    const isWin = (winNum === selectedGuess);
+    if (isWin) {
+      const winAmount = bet * 5;
+      user.balance += winAmount;
+      updateQuestProgress('guess_win');
+      saveUser(); renderAll();
+      toast(`Победа! Выпало ${winNum}. +${winAmount} €`);
+      launchConfetti(); playSfx('rare');
+    } else toast(`Выпало ${winNum}. Проигрыш ${bet} €`);
+    selectedGuess = null;
+    guessBtns.forEach(b => b.classList.remove('active'));
+    btnPlayGuess.disabled = true;
+  });
+}
+
+/* ===== Inventory ===== */
+const tabItems = $('#inv-tab-items');
+const tabPromo = $('#inv-tab-promo');
+const viewItems = $('#inv-view-items');
+const viewPromo = $('#inv-view-promo');
+
+if(tabItems && tabPromo) {
+  tabItems.addEventListener('click', () => { tabItems.classList.add('active'); tabPromo.classList.remove('active'); viewItems.classList.remove('hidden'); viewPromo.classList.add('hidden'); });
+  tabPromo.addEventListener('click', () => { tabPromo.classList.add('active'); tabItems.classList.remove('active'); viewPromo.classList.remove('hidden'); viewItems.classList.add('hidden'); });
+}
+
+function renderInventory() {
+  const box = $('#inv-container');
+  if(!box) return;
+  const inv = user.inventory || [];
+  if (!inv.length) {
+    box.innerHTML = `<div class="empty"><svg viewBox="0 0 100 100" fill="none" stroke="var(--accent)" stroke-width="6" stroke-linejoin="round" style="width:44px;height:44px;margin:0 auto 12px"><path d="M10 35 L50 15 L90 35 L90 85 L50 105 L10 85 Z"/><path d="M10 35 L50 55 L90 35"/><path d="M50 55 L50 105"/></svg>Инвентарь пуст.<br>Открой первый кейс!</div>`;
+    return;
+  }
+  const sorted = inv.slice().sort((a,b) => (ITEMS[b.id] ? ITEMS[b.id].price : 0) - (ITEMS[a.id] ? ITEMS[a.id].price : 0));
+  let html = '<div class="inv-list">';
+  sorted.forEach(inst => {
+    if (!ITEMS[inst.id]) return;
+    const it = ITEMS[inst.id], r = RARITY[it.rarity];
+    const icon = it.img ? `<img src="${it.img}" onerror="this.style.display='none'">` : (ITEM_SVGS[it.svg] || '');
+    html += `
+      <div class="inv-item" style="--c:${r.color}">
+        <div class="inv-icon" style="color:${r.color}">${icon}</div>
+        <div class="inv-info">
+          <div class="inv-name">${it.name}</div>
+          <div class="inv-rar" style="color:${r.color}">${r.name}</div>
+        </div>
+        <button class="inv-sell" data-uid="${inst.uid}">${SVG_COIN} ${fmt(it.price)}</button>
+      </div>`;
+  });
+  html += '</div>';
+  box.innerHTML = html;
+  box.querySelectorAll('.inv-sell').forEach(btn => { btn.addEventListener('click', () => sellInstance(btn.dataset.uid, false)); });
+}
+
+function sellInstance(uid, silent) {
+  const idx = user.inventory.findIndex(x => x.uid === uid);
+  if (idx === -1) return;
+  const inst = user.inventory[idx];
+  if (!ITEMS[inst.id]) return;
+  const price = ITEMS[inst.id].price;
+  user.inventory.splice(idx, 1);
+  user.balance += price;
+  updateQuestProgress('sold');
+  saveUser(); renderAll(); playSfx('click');
+  if (!silent) toast(`Продано: +${fmt(price)} €`);
+}
+
+$('#btn-sell-all').addEventListener('click', async () => {
+  if (!user.inventory.length) { toast('Инвентарь пуст'); return; }
+  const confirmed = await showConfirm('Продажа', `Продать все ${user.inventory.length} предметов?`);
+  if (!confirmed) return;
+  let total = 0;
+  user.inventory.forEach(inst => { if(ITEMS[inst.id]) total += ITEMS[inst.id].price; });
+  user.balance += total;
+  user.inventory = [];
+  saveUser(); renderAll(); playSfx('click');
+  toast(`Продано всё: +${fmt(total)} €`);
+});
+
+const promoInput = $('#promo-code-input');
+function tryActivatePromo() {
+  if (!promoInput) return;
+  const code = promoInput.value.trim().toUpperCase();
+  if (!code) return;
+  const promos = getPromos();
+  const promo = promos[code];
+  if (!promo) { toast('Промокод не найден'); return; }
+  if (!user.usedPromos) user.usedPromos = [];
+  if (user.usedPromos.includes(code)) { toast('Уже использован'); return; }
+  if (promo.money > 0) { user.balance += promo.money; toast(`+${fmt(promo.money)} €`); }
+  if (promo.car && ITEMS[promo.car]) {
+    user.inventory.push({ uid: Date.now() + '_' + Math.random().toString(36).slice(2, 8), id: promo.car, ts: Date.now() });
+    toast(`Получена: ${ITEMS[promo.car].name}`);
+  }
+  if (promo.cases > 0) { user.balance += promo.cases * 500; }
+  user.usedPromos.push(code);
+  saveUser(); renderAll();
+  promoInput.value = ''; launchConfetti(); playSfx('rare');
+  toast(`Промокод активирован!`);
+}
+if (promoInput) {
+  promoInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); tryActivatePromo(); } });
+}
+
+/* ==========================================================================
+   Profile (ИСПРАВЛЕНО: auto-select + renderBanner всегда вызывается)
+   ========================================================================== */
+function renderBanner() {
+  const bannerWrap = $('#p-banner-wrap');
+  if (!bannerWrap) return;
+  const list = user.settings.bannerList || [];
+
+  let current = list.find(b => b.id === user.settings.currentBannerId);
+
+  // ИСПРАВЛЕНО: если текущий баннер невалиден, но есть баннеры — выбираем первый
+  if (!current && list.length > 0) {
+    current = list[0];
+    user.settings.currentBannerId = current.id;
+    // сохраняем без рекурсии (прямо в localStorage)
+    try {
+      const users = getUsers();
+      users[username] = user;
+      user.lastUpdated = Date.now();
+      setUsers(users);
+    } catch(e) {}
+  }
+
+  if (!current) {
+    bannerWrap.innerHTML = '';
+    bannerWrap.style.background = 'linear-gradient(160deg, var(--accent), var(--card2))';
+    return;
+  }
+  bannerWrap.style.background = '';
+  if (current.type === 'image-data') {
+    bannerWrap.innerHTML = `<img src="${current.data}" class="banner-media" alt="${current.name}">`;
+    return;
+  }
+  bannerWrap.innerHTML = '';
+  getMediaBlob(current.blobKey, (blob) => {
+    if (!blob) { bannerWrap.innerHTML = ''; bannerWrap.style.background = 'linear-gradient(45deg, #1a1a2e, #0d0221)'; return; }
+    const url = URL.createObjectURL(blob);
+    if (current.type === 'video') bannerWrap.innerHTML = `<video src="${url}" autoplay loop muted playsinline class="banner-media"></video>`;
+    else bannerWrap.innerHTML = `<img src="${url}" class="banner-media" alt="${current.name}">`;
+  });
+}
+
+function renderProfile() {
+  $('#p-balance').innerHTML = `${SVG_COIN} ${fmt(user.balance)}`;
+  $('#st-opened').textContent = user.stats.opened;
+  $('#st-items').textContent = user.inventory.length;
+  if (user.stats.best && ITEMS[user.stats.best]) {
+    const best = ITEMS[user.stats.best];
+    const icon = best.img ? `<img src="${best.img}" style="width:16px;height:16px;object-fit:contain" onerror="this.style.display='none'">` : `<span style="width:16px;height:16px;display:inline-block">${ITEM_SVGS[best.svg] || ''}</span>`;
+    $('#st-best').innerHTML = `<span style="display:flex;align-items:center;justify-content:center;gap:4px">${icon} ${best.name}</span>`;
+    $('#st-best').style.fontSize = '11px';
+  } else { $('#st-best').textContent = '—'; $('#st-best').style.fontSize = '15px'; }
+
+  const streakEl = $('#st-streak');
+  if (streakEl) streakEl.textContent = user.loginStreak || 0;
+
+  renderBanner();
+
+  const musicPlayer = $('#music-player');
+  const list = user.settings.musicList || [];
+  if (list.length > 0) {
+    musicPlayer.classList.remove('hidden');
+    const currentTrack = list.find(t => t.id === user.settings.currentMusicId);
+    $('#music-player-label').textContent = currentTrack ? currentTrack.name : 'Выберите трек';
+    updateMusicBtnUI();
+  } else { musicPlayer.classList.add('hidden'); bgMusic.pause(); musicPlaying = false; }
+
+  const btn = $('#btn-bonus');
+  const left = BONUS_CD - (Date.now() - (user.lastBonus || 0));
+  if (left > 0) {
+    const h = Math.floor(left / 3600000);
+    const m = Math.floor((left % 3600000) / 60000);
+    btn.textContent = `БОНУС ЧЕРЕЗ ${h}ч ${m}м`;
+    btn.disabled = true; btn.style.opacity = '.5';
+  } else {
+    btn.textContent = `ЗАБРАТЬ БОНУС +${DAILY_BONUS} €`;
+    btn.disabled = false; btn.style.opacity = '1';
+  }
+}
+
+function updateMusicBtnUI() {
+  const musicBtn = $('#btn-music-toggle');
+  if(musicBtn) musicBtn.innerHTML = musicPlaying ? SVG_PAUSE : SVG_PLAY;
+}
+
+function playMusicById(trackId) {
+  const list = user.settings.musicList || [];
+  const track = list.find(t => t.id === trackId);
+  if (!track) return;
+  user.settings.currentMusicId = trackId;
+  saveUser();
+  bgMusic.pause();
+  if (track.url) {
+    bgMusic.src = track.url;
+    bgMusic.play().catch(() => toast('Ошибка загрузки трека'));
+    musicPlaying = true; updateMusicBtnUI(); renderTrackList();
+    $('#music-player-label').textContent = track.name;
+  } else if (track.blobKey) {
+    getMediaBlob(track.blobKey, (blob) => {
+      if (!blob) return toast('Файл не найден');
+      bgMusic.src = URL.createObjectURL(blob);
+      bgMusic.play().catch(() => toast('Ошибка воспроизведения'));
+      musicPlaying = true; updateMusicBtnUI(); renderTrackList();
+      $('#music-player-label').textContent = track.name;
+    });
+  }
+}
+
+/* ===== Tracks & Banners ===== */
+function renderTrackList() {
+  const container = $('#track-list-container');
+  if (!container) return;
+  const list = user.settings.musicList || [];
+  if (list.length === 0) { container.innerHTML = '<div class="list-empty">Пока нет загруженных треков</div>'; return; }
+  container.innerHTML = '';
+  list.forEach(track => {
+    const isCurrent = track.id === user.settings.currentMusicId;
+    const div = document.createElement('div');
+    div.className = 'track-item' + (isCurrent ? ' active' : '');
+    div.innerHTML = `
+      <div class="track-icon">${isCurrent && musicPlaying ? '❚❚' : '▶'}</div>
+      <div class="track-name">${track.name} ${track.url ? '(Online)' : ''}</div>
+      <button class="track-btn" data-action="play">${isCurrent && musicPlaying ? '❚❚' : '▶'}</button>
+      <button class="track-btn delete" data-action="delete">×</button>
+    `;
+    div.querySelector('.track-icon').addEventListener('click', () => { if (isCurrent) toggleMusic(); else playMusicById(track.id); });
+    div.querySelector('[data-action="play"]').addEventListener('click', () => { if (isCurrent) toggleMusic(); else playMusicById(track.id); });
+    div.querySelector('[data-action="delete"]').addEventListener('click', async () => {
+      const conf = await showConfirm('Удалить трек?', 'Удалить «' + track.name + '»?');
+      if (!conf) return;
+      user.settings.musicList = user.settings.musicList.filter(x => x.id !== track.id);
+      if (user.settings.currentMusicId === track.id) { user.settings.currentMusicId = null; bgMusic.pause(); musicPlaying = false; }
+      if (track.blobKey) deleteMediaBlob(track.blobKey);
+      saveUser(); renderProfile(); renderTrackList(); toast('Трек удалён');
+    });
+    container.appendChild(div);
+  });
+}
+
+function renderBannerList() {
+  const container = $('#banner-list-container');
+  if (!container) return;
+  const list = user.settings.bannerList || [];
+  if (list.length === 0) { container.innerHTML = '<div class="list-empty" style="grid-column: 1 / -1;">Пока нет загруженных баннеров</div>'; return; }
+  container.innerHTML = '';
+  list.forEach(b => {
+    const isCurrent = b.id === user.settings.currentBannerId;
+    const thumb = document.createElement('div');
+    thumb.className = 'banner-thumb' + (isCurrent ? ' active' : '');
+    thumb.innerHTML = `
+      <div class="banner-name-label">${b.name || 'Без названия'}</div>
+      <div class="banner-thumb-media"></div>
+      <div class="banner-thumb-actions">
+        <button data-action="select">${isCurrent ? 'Активен' : 'Выбрать'}</button>
+        <button class="del" data-action="delete">×</button>
+      </div>
+    `;
+    const mediaWrap = thumb.querySelector('.banner-thumb-media');
+    if (b.type === 'image-data') {
+      mediaWrap.innerHTML = `<img src="${b.data}">`;
+    } else {
+      getMediaBlob(b.blobKey, (blob) => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        if (b.type === 'video') mediaWrap.innerHTML = `<video src="${url}" autoplay loop muted playsinline></video>`;
+        else mediaWrap.innerHTML = `<img src="${url}">`;
+      });
+    }
+    thumb.querySelector('[data-action="select"]').addEventListener('click', () => {
+      user.settings.currentBannerId = b.id; saveUser(); renderProfile(); renderBannerList();
+      toast('Баннер выбран');
+    });
+    thumb.querySelector('[data-action="delete"]').addEventListener('click', async () => {
+      const conf = await showConfirm('Удалить баннер?', 'Удалить «' + (b.name || 'Без названия') + '»?');
+      if (!conf) return;
+      user.settings.bannerList = user.settings.bannerList.filter(x => x.id !== b.id);
+      if (user.settings.currentBannerId === b.id) user.settings.currentBannerId = null;
+      if (b.blobKey) deleteMediaBlob(b.blobKey);
+      saveUser(); renderProfile(); renderBannerList(); toast('Баннер удалён');
+    });
+    container.appendChild(thumb);
+  });
+}
+
+function toggleMusic() {
+  if (!bgMusic.src) {
+    if (user.settings.currentMusicId) playMusicById(user.settings.currentMusicId);
+    else if (user.settings.musicList && user.settings.musicList.length > 0) playMusicById(user.settings.musicList[0].id);
+    return;
+  }
+  if (musicPlaying) { bgMusic.pause(); musicPlaying = false; }
+  else { bgMusic.play().catch(e => toast('Ошибка воспроизведения')); musicPlaying = true; }
+  updateMusicBtnUI(); renderTrackList();
+  const currentTrack = (user.settings.musicList || []).find(t => t.id === user.settings.currentMusicId);
+  if (currentTrack) $('#music-player-label').textContent = currentTrack.name;
+}
+
+$('#btn-music-toggle').addEventListener('click', toggleMusic);
+bgMusic.addEventListener('ended', () => { bgMusic.currentTime = 0; bgMusic.play().catch(() => {}); });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) { if (musicPlaying) bgMusic.pause(); }
+  else { if (musicPlaying && bgMusic.src) bgMusic.play().catch(() => {}); }
+});
+
+$('#music-volume').addEventListener('input', (e) => { bgMusic.volume = parseFloat(e.target.value); });
+
+$('#btn-bonus').addEventListener('click', () => {
+  const left = BONUS_CD - (Date.now() - (user.lastBonus || 0));
+  if (left > 0) { toast('Бонус не готов'); return; }
+  user.lastBonus = Date.now();
+  user.balance += DAILY_BONUS;
+  saveUser(); renderAll(); playSfx('rare');
+  toast(`Бонус получен: +${DAILY_BONUS} €`);
+});
+
+$('#btn-logout').addEventListener('click', logout);
+
+/* ===== Support ===== */
+const supportOverlay = $('#support-overlay');
+const supportMessages = $('#support-messages');
+const supportInput = $('#support-input');
+const typingIndicator = $('#typing');
+const quickReplies = $('#quick-replies');
+
+$('#btn-open-support').addEventListener('click', () => {
+  supportOverlay.classList.add('show');
+  pubnub.subscribe({ channels: [getUserChannel(username)] });
+  if (quickReplies) quickReplies.style.display = userInSession ? 'none' : 'flex';
+  setTimeout(() => { supportMessages.scrollTop = supportMessages.scrollHeight; }, 100);
+});
+
+$('#close-support').addEventListener('click', () => { supportOverlay.classList.remove('show'); });
+$('#user-clear-chat').addEventListener('click', async () => {
+  const confirmed = await showConfirm('Очистка чата', 'Очистить все сообщения?');
+  if (!confirmed) return;
+  supportMessages.innerHTML = '';
+  toast('Чат очищен');
+});
+
+function addUserMessage(text, sender) {
+  const div = document.createElement('div');
+  div.className = `msg-bubble msg-${sender}`;
+  if (sender === 'bot') div.innerHTML = `<div class="msg-sender">БОТ ПОДДЕРЖКИ <img src="t.webp" alt="check" onerror="this.style.display='none'"></div> ${text}`;
+  else if (sender === 'owner') div.innerHTML = `<div class="msg-sender">@Owner (Mrazota)</div> ${text}`;
+  else div.textContent = text;
+  supportMessages.appendChild(div);
+  supportMessages.scrollTop = supportMessages.scrollHeight;
+}
+
+function handleUserMessage(text) {
+  if (!text.trim()) return;
+  addUserMessage(text, 'user');
+  supportInput.value = '';
+  if (!userInSession) {
+    pubnub.publish({ channel: OWNER_CHANNEL, message: { type: 'support_request', from: username, display: user.display, text: text, timestamp: Date.now() } });
+    typingIndicator.style.display = 'block';
+    setTimeout(() => {
+      typingIndicator.style.display = 'none';
+      addUserMessage('Хорошо, сейчас подключу Помощь. Ожидайте @Owner (Mrazota).', 'bot');
+    }, 800);
+  } else {
+    pubnub.publish({ channel: getUserChannel(username), message: { type: 'user_message', sender: 'user', from: username, text: text, timestamp: Date.now() } });
+  }
+}
+
+$('#btn-send-support').addEventListener('click', () => handleUserMessage(supportInput.value));
+supportInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleUserMessage(supportInput.value); });
+window.sendQuickReply = function(text) { handleUserMessage(text); };
+
+/* ===== Owner chat ===== */
+const ownerChatOverlay = $('#owner-chat-overlay');
+const ownerChatMessages = $('#owner-chat-messages');
+const ownerChatInput = $('#owner-chat-input');
+const ownerChatUserSpan = $('#owner-chat-user');
+const ownerRequestOverlay = $('#owner-request-overlay');
+const ownerReqUser = $('#owner-req-user');
+const ownerReqMsg = $('#owner-req-msg');
+
+function ownerAddMessage(text, sender) {
+  const div = document.createElement('div');
+  div.className = `msg-bubble msg-${sender === 'user' ? 'user' : 'owner'}`;
+  if (sender === 'owner') div.innerHTML = `<div class="msg-sender">ВЫ (@Owner)</div> ${text}`;
+  else div.innerHTML = `<div class="msg-sender">ПОЛЬЗОВАТЕЛЬ</div> ${text}`;
+  ownerChatMessages.appendChild(div);
+  ownerChatMessages.scrollTop = ownerChatMessages.scrollHeight;
+}
+
+function openOwnerChat(displayName, initialMessage) {
+  ownerChatUserSpan.textContent = displayName;
+  ownerChatOverlay.classList.add('show');
+  if (initialMessage) ownerAddMessage(initialMessage, 'user');
+}
+
+$('#owner-accept').addEventListener('click', () => {
+  if (!pendingRequest) return;
+  const reqUser = pendingRequest.from;
+  const reqDisplay = pendingRequest.display;
+  const firstMsg = pendingRequest.text;
+  const userChannel = getUserChannel(reqUser);
+  pubnub.publish({ channel: userChannel, message: { type: 'owner_decision', accepted: true, sender: 'owner' } });
+  pubnub.subscribe({ channels: [userChannel] });
+  ownerInSession = true;
+  activeSessionUser = reqUser;
+  activeSessionDisplay = reqDisplay;
+  ownerRequestOverlay.classList.remove('show');
+  ownerChatMessages.innerHTML = '';
+  openOwnerChat(reqDisplay, firstMsg);
+  pendingRequest = null;
+  toast('Подключились к ' + reqDisplay);
+});
+
+$('#owner-decline').addEventListener('click', () => {
+  if (!pendingRequest) return;
+  pubnub.publish({ channel: getUserChannel(pendingRequest.from), message: { type: 'owner_decision', accepted: false, sender: 'owner' } });
+  ownerRequestOverlay.classList.remove('show');
+  pendingRequest = null;
+});
+
+function ownerSendMessage(text) {
+  if (!text.trim() || !activeSessionUser) return;
+  ownerAddMessage(text, 'owner');
+  ownerChatInput.value = '';
+  pubnub.publish({ channel: getUserChannel(activeSessionUser), message: { type: 'owner_reply', sender: 'owner', text: text, timestamp: Date.now() } });
+}
+
+$('#btn-owner-send').addEventListener('click', () => ownerSendMessage(ownerChatInput.value));
+ownerChatInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') ownerSendMessage(ownerChatInput.value); });
+$('#owner-chat-clear').addEventListener('click', async () => {
+  const confirmed = await showConfirm('Очистка чата', 'Очистить все сообщения?');
+  if (!confirmed) return;
+  ownerChatMessages.innerHTML = '';
+  toast('Чат очищен');
+});
+$('#owner-chat-close').addEventListener('click', async () => {
+  const confirmed = await showConfirm('Завершить сессию', 'Завершить диалог с пользователем?');
+  if (!confirmed) return;
+  if (activeSessionUser) pubnub.publish({ channel: getUserChannel(activeSessionUser), message: { type: 'session_end', sender: 'owner' } });
+  ownerChatOverlay.classList.remove('show');
+  ownerChatMessages.innerHTML = '';
+  ownerInSession = false;
+  activeSessionUser = null; activeSessionDisplay = null;
+  toast('Сессия завершена');
+});
+
+/* ===== PubSub Listener ===== */
+pubnub.addListener({
+  message: function(event) {
+    const msg = event.message;
+    const channel = event.channel;
+    if (channel === GLOBAL_FEED_CHANNEL) {
+      const feedScroll = $('#feed-scroll');
+      if (feedScroll) {
+        const span = document.createElement('span');
+        span.className = 'feed-item ' + msg.rarity;
+        span.innerHTML = `<b>${msg.user}</b> выбил <b>${msg.item}</b>`;
+        feedScroll.appendChild(span);
+        if (feedScroll.children.length > 5) feedScroll.removeChild(feedScroll.children[0]);
+      }
+      return;
+    }
+    if (username && channel === getUserChannel(username)) {
+      if (msg.type === 'owner_decision') {
+        if (msg.accepted) {
+          userInSession = true;
+          addUserMessage('@Owner (Mrazota) подключился к диалогу.', 'bot');
+          if (quickReplies) quickReplies.style.display = 'none';
+        } else addUserMessage('@Owner отклонил запрос.', 'bot');
+        return;
+      }
+      if (msg.type === 'owner_reply' && msg.sender === 'owner') { addUserMessage(msg.text, 'owner'); return; }
+      if (msg.type === 'session_end' && msg.sender === 'owner') {
+        userInSession = false;
+        addUserMessage('Сессия завершена. Спасибо!', 'bot');
+        if (quickReplies) quickReplies.style.display = 'flex';
+        return;
+      }
+      return;
+    }
+    if (channel === OWNER_CHANNEL && msg.type === 'support_request') {
+      if (!isOwner()) return;
+      if (activeSessionUser === msg.from) { if (ownerInSession) ownerAddMessage(msg.text, 'user'); return; }
+      if (ownerInSession) { toast('Уже идёт диалог'); return; }
+      if (pendingRequest && pendingRequest.from === msg.from) return;
+      ownerReqUser.textContent = 'От: ' + msg.display + ' (@' + msg.from + ')';
+      ownerReqMsg.textContent = msg.text;
+      ownerRequestOverlay.classList.add('show');
+      pendingRequest = msg;
+      return;
+    }
+    if (isOwner() && ownerInSession && activeSessionUser) {
+      if (channel === getUserChannel(activeSessionUser)) {
+        if (msg.type === 'user_message' && msg.sender === 'user') ownerAddMessage(msg.text, 'user');
+      }
+    }
+  }
+});
+
+function initSupportSubscriptions() {
+  if (!username) return;
+  pubnub.subscribe({ channels: [getUserChannel(username)] });
+  if (isOwner()) pubnub.subscribe({ channels: [OWNER_CHANNEL] });
+}
+
+/* ===== Badges / Admin / Settings ===== */
+const badgeModal = $('#badge-modal');
+const badgeGrid = $('#badge-grid');
+
+function openBadgeModal() {
+  if(!badgeGrid) return;
+  badgeGrid.innerHTML = '';
+  BADGES_LIST.forEach(b => {
+    const btn = document.createElement('button');
+    btn.className = `badge-btn ${user.settings.badge === b.id ? 'active' : ''}`;
+    if (b.id === 'none') btn.innerHTML = `<svg viewBox="0 0 24 24" style="width:32px;height:32px;fill:var(--muted)"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg><span>Без галочки</span>`;
+    else btn.innerHTML = `<img src="${b.file}" alt="${b.name}" onerror="this.src='data:image/svg+xml;utf8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22%233b82f6%22%3E%3Cpath d=%22M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z%22/%3E%3C/svg%3E'"><span>${b.name}</span>`;
+    btn.addEventListener('click', () => {
+      user.settings.badge = b.id;
+      saveUser(); updateHUD(); closeBadgeModal();
+      toast('Галочка обновлена');
+    });
+    badgeGrid.appendChild(btn);
+  });
+  badgeModal.classList.add('show');
+}
+
+function closeBadgeModal() { if(badgeModal) badgeModal.classList.remove('show'); }
+$('#btn-open-badges').addEventListener('click', openBadgeModal);
+$('#close-badge-modal').addEventListener('click', closeBadgeModal);
+badgeModal.addEventListener('click', (e) => { if (e.target === badgeModal) closeBadgeModal(); });
+
+function checkAdminAccess() {
+  if (isOwner()) $('#admin-panel').classList.remove('hidden');
+  else $('#admin-panel').classList.add('hidden');
+}
+
+const adminToggle = $('#admin-toggle');
+const adminContent = $('#admin-content');
+const adminArrow = $('#admin-arrow');
+adminToggle.addEventListener('click', () => {
+  const isHidden = adminContent.classList.toggle('hidden');
+  adminArrow.style.transform = isHidden ? 'rotate(0deg)' : 'rotate(180deg)';
+});
+
+$('#admin-money').addEventListener('click', () => { user.balance += 100000; saveUser(); renderAll(); toast('+100,000 €'); });
+$('#admin-item').addEventListener('click', () => {
+  user.inventory.push({ uid: Date.now() + '_' + Math.random().toString(36).slice(2, 8), id: 'vesta', ts: Date.now() });
+  saveUser(); renderAll(); toast('Выдано: Lada Vesta');
+});
+
+$('#btn-admin-gift').addEventListener('click', () => {
+  const targetNick = $('#admin-gift-user').value.trim().toLowerCase();
+  if (!targetNick) return toast('Введите никнейм');
+  const users = getUsers();
+  if (!users[targetNick]) return toast('Пользователь не найден');
+  const target = users[targetNick];
+  const amount = parseInt($('#admin-gift-money').value) || 0;
+  const badge = $('#admin-gift-badge').value;
+  const changes = [];
+  if (amount > 0) { if (typeof target.balance !== 'number') target.balance = 0; target.balance += amount; changes.push(`+${amount} €`); }
+  if (badge !== '__none__') { if (!target.settings) target.settings = {}; target.settings.badge = badge; changes.push(`галочка: ${badge}`); }
+  if (changes.length === 0) return toast('Укажите, что выдать');
+  ensureUserDefaults(target, targetNick);
+  target.lastUpdated = Date.now();
+  users[targetNick] = target;
+  setUsers(users);
+  if (targetNick === username) { user.balance = target.balance; user.settings.badge = target.settings.badge; updateHUD(); renderAll(); }
+  toast(`Выдано ${targetNick}: ${changes.join(', ')}`);
+  $('#admin-gift-user').value = ''; $('#admin-gift-money').value = '0'; $('#admin-gift-badge').value = '__none__';
+});
+
+$('#btn-create-promo').addEventListener('click', () => {
+  const code = $('#promo-create-name').value.trim().toUpperCase();
+  if (!code) return toast('Введите название кода');
+  const money = parseInt($('#promo-create-money').value) || 0;
+  const car = $('#promo-create-car').value;
+  const cases = parseInt($('#promo-create-cases').value) || 0;
+  if (money === 0 && !car && cases === 0) return toast('Заполните поле');
+  const promos = getPromos();
+  promos[code] = { money, car, cases };
+  setPromos(promos);
+  $('#promo-create-name').value = ''; $('#promo-create-money').value = '1000';
+  $('#promo-create-car').value = ''; $('#promo-create-cases').value = '0';
+  toast(`Промокод ${code} создан!`);
+});
+
+$('#btn-save-name').addEventListener('click', () => {
+  const val = $('#set-name-input').value.trim();
+  if (val.length < 2) return toast('Слишком короткое имя');
+  user.display = val;
+  saveUser(); updateHUD(); renderAll();
+  $('#set-name-input').value = '';
+  toast('Имя обновлено');
+});
+
+function renderPalette() {
+  const p = $('#color-palette');
+  if(!p) return;
+  p.innerHTML = '';
+  NAME_COLORS.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = `clr-btn ${user.settings.nameColor===c?'active':''}`;
+    btn.style.background = c; btn.style.color = c;
+    btn.addEventListener('click', () => {
+      user.settings.nameColor = c;
+      saveUser(); updateHUD(); renderPalette();
+    });
+    p.appendChild(btn);
+  });
+}
+
+function renderSettings() {
+  renderPalette();
+  $$('.theme-btn').forEach(b => b.classList.toggle('active', b.dataset.theme === user.settings.theme));
+  $$('.font-btn').forEach(b => b.classList.toggle('active', b.dataset.font === user.settings.font));
+}
+
+function compressImage(file, maxW, maxH, cb) {
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      let width = img.width, height = img.height;
+      if (width > height) { if (width > maxW) { height *= maxW / width; width = maxW; } }
+      else { if (height > maxH) { width *= maxH / height; height = maxH; } }
+      canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      cb(canvas.toDataURL('image/jpeg', 0.8));
+    };
+    img.src = event.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+$('#btn-upload-avatar').addEventListener('click', () => { $('#avatar-upload').click(); });
+$('#avatar-upload').addEventListener('change', function(e) {
+  const file = e.target.files[0]; if (!file) return;
+  compressImage(file, 200, 200, (dataUrl) => {
+    user.settings.avatarData = dataUrl;
+    saveUser(); updateHUD();
+    toast('Аватарка обновлена');
+  });
+  e.target.value = '';
+});
+
+$('#btn-upload-banner').addEventListener('click', () => { $('#banner-upload').click(); });
+$('#banner-upload').addEventListener('change', function(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const itemId = 'b_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+  const blobKey = 'banner_' + username + '_' + itemId;
+  let customName = $('#banner-name-input').value.trim();
+  if (!customName) customName = file.name.replace(/\.[^.]+$/, '') || 'Баннер';
+  if (file.type.startsWith('video/')) {
+    saveMediaBlob(blobKey, file, (ok) => {
+      if (!ok) { toast('Ошибка сохранения баннера'); return; }
+      if (!user.settings.bannerList) user.settings.bannerList = [];
+      user.settings.bannerList.push({ id: itemId, name: customName, type: 'video', blobKey });
+      if (!user.settings.currentBannerId) user.settings.currentBannerId = itemId;
+      saveUser(); renderProfile(); renderBannerList();
+      $('#banner-name-input').value = '';
+      toast('Видео-баннер добавлен');
+    });
+  } else {
+    compressImage(file, 1200, 700, (dataUrl) => {
+      fetch(dataUrl).then(r => r.blob()).then(blob => {
+        saveMediaBlob(blobKey, blob, (ok) => {
+          if (!ok) { toast('Ошибка сохранения баннера'); return; }
+          if (!user.settings.bannerList) user.settings.bannerList = [];
+          user.settings.bannerList.push({ id: itemId, name: customName, type: 'image', blobKey });
+          if (!user.settings.currentBannerId) user.settings.currentBannerId = itemId;
+          saveUser(); renderProfile(); renderBannerList();
+          $('#banner-name-input').value = '';
+          toast('Баннер добавлен');
+        });
+      }).catch(err => { console.error(err); toast('Ошибка сохранения'); });
+    });
+  }
+  e.target.value = '';
+});
+
+$('#btn-upload-music').addEventListener('click', () => { $('#music-upload').click(); });
+$('#music-upload').addEventListener('change', function(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const itemId = 'm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+  const blobKey = 'music_' + username + '_' + itemId;
+  const name = file.name.replace(/\.[^.]+$/, '') || 'Трек';
+  saveMediaBlob(blobKey, file, (ok) => {
+    if (!ok) { toast('Ошибка сохранения трека'); return; }
+    if (!user.settings.musicList) user.settings.musicList = [];
+    user.settings.musicList.push({ id: itemId, name, blobKey });
+    if (!user.settings.currentMusicId) user.settings.currentMusicId = itemId;
+    saveUser(); renderProfile(); renderTrackList();
+    toast('Трек добавлен');
+  });
+  e.target.value = '';
+});
+
+$('#btn-add-online-music').addEventListener('click', () => {
+  const url = $('#online-music-url').value.trim();
+  if (!url) return toast('Введите ссылку');
+  if (!url.startsWith('http')) return toast('Ссылка должна начинаться с http');
+  const itemId = 'm_web_' + Date.now();
+  const name = url.split('/').pop().split('.')[0] || 'Онлайн трек';
+  if (!user.settings.musicList) user.settings.musicList = [];
+  user.settings.musicList.push({ id: itemId, name, url });
+  if (!user.settings.currentMusicId) user.settings.currentMusicId = itemId;
+  saveUser(); renderProfile(); renderTrackList();
+  $('#online-music-url').value = '';
+  toast('Онлайн трек добавлен');
+});
+
+window.quickAddMusic = function(url, name) {
+  const itemId = 'm_web_' + Date.now();
+  if (!user.settings.musicList) user.settings.musicList = [];
+  user.settings.musicList.push({ id: itemId, name, url });
+  if (!user.settings.currentMusicId) user.settings.currentMusicId = itemId;
+  saveUser(); renderProfile(); renderTrackList();
+  toast('Трек ' + name + ' добавлен!');
+};
+
+document.body.addEventListener('click', (e) => {
+  const themeBtn = e.target.closest('.theme-btn');
+  if (themeBtn) {
+    if (!user) return;
+    user.settings.theme = themeBtn.dataset.theme;
+    saveUser(); applyTheme(user.settings.theme);
+    return;
+  }
+  const fontBtn = e.target.closest('.font-btn');
+  if (fontBtn) {
+    if (!user) return;
+    user.settings.font = fontBtn.dataset.font;
+    saveUser(); applyFont(user.settings.font);
+    return;
+  }
+});
+
+function launchConfetti() {
+  const colors = ['#00e5ff', '#ff007f', '#fbbf24', '#22c55e', '#a855f7'];
+  for (let i = 0; i < 50; i++) {
+    const conf = document.createElement('div');
+    conf.className = 'confetti-piece';
+    conf.style.background = colors[Math.floor(Math.random() * colors.length)];
+    conf.style.left = Math.random() * 100 + '%';
+    conf.style.animation = `fall ${(Math.random() * 1 + 1.5)}s linear forwards`;
+    conf.style.animationDelay = `${Math.random() * 0.5}s`;
+    $('#app-container').appendChild(conf);
+    setTimeout(() => conf.remove(), 3000);
+  }
+}
+
+/* ===== PC Keyboard shortcuts ===== */
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    if ($('#open-overlay').classList.contains('show') && !spinning) closeOverlay();
+    if ($('#badge-modal').classList.contains('show')) closeBadgeModal();
+    if ($('#support-overlay').classList.contains('show')) $('#support-overlay').classList.remove('show');
+    if ($('#owner-request-overlay').classList.contains('show')) { $('#owner-request-overlay').classList.remove('show'); pendingRequest = null; }
+    return;
+  }
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+  if (['1','2','3','4','5'].includes(e.key)) {
+    if ($('#tab-minigames').classList.contains('active')) {
+      const btn = document.querySelector(`.guess-btn[data-num="${e.key}"]`);
+      if (btn) btn.click();
+    }
+  }
+});
+
+/* ===== Init ===== */
+(function initApp() {
+  const loader = $('#loading-screen');
+  const hideLoader = () => {
+    if (loader) { loader.classList.add('hidden-loader'); setTimeout(() => loader.remove(), 500); }
+  };
+  try {
+    let sess = null;
+    try { sess = localStorage.getItem(K_SESS); } catch(e){}
+    if (sess) {
+      const users = getUsers();
+      if (users[sess]) {
+        username = sess;
+        user = users[sess];
+        ensureUserDefaults(user, username);
+        enterGame();
+        setTimeout(hideLoader, 300);
+        return;
+      }
+    }
+    $('#screen-auth').classList.add('active');
+    hideLoader();
+  } catch (error) {
+    console.error("Ошибка инициализации:", error);
+    try { localStorage.removeItem(K_SESS); } catch(e){}
+    $('#screen-game').classList.remove('active');
+    $('#screen-auth').classList.add('active');
+    hideLoader();
+    setMsg('Ошибка загрузки данных. Войдите заново.', 'err');
+  }
+})();
+
+})();
+</script>
+</body>
+</html>
